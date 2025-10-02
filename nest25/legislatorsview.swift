@@ -427,6 +427,7 @@ struct ContactView: View {
     @State private var subject: String = ""
     @State private var intro: String
     @State private var question: String = ""
+    @State private var makeQuestionPublic: Bool = true // Add this state
     @State private var showMailSheet = false
     @StateObject private var questionFetcher = QuestionFetcher()
     @State private var relevantQuestions: [AskedQuestion] = []
@@ -568,7 +569,7 @@ struct ContactView: View {
                                     RoundedRectangle(cornerRadius: 8)
                                         .stroke(Color(UIColor.systemGray4), lineWidth: 1)
                                 )
-                                .allowsHitTesting(false) // Add this line here
+                                .allowsHitTesting(false)
                         }
                         
                         VStack(alignment: .leading, spacing: 8) {
@@ -586,6 +587,27 @@ struct ContactView: View {
                                         .stroke(Color(UIColor.systemGray4), lineWidth: 1)
                                 )
                         }
+                        
+                        // Add the toggle here
+                        VStack(alignment: .leading, spacing: 8) {
+                            Toggle(isOn: $makeQuestionPublic) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Make Question Public")
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                    
+                                    Text("Share your question with other users to see responses")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .toggleStyle(SwitchToggleStyle(tint: Color("PrimaryBlue")))
+                            .padding(.vertical, 8)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(12)
                         
                         Button(action: { self.showMailSheet = true }) {
                             Label("Prepare Email", systemImage: "envelope.fill")
@@ -633,7 +655,6 @@ struct ContactView: View {
         }
     }
 }
-
 // MARK: - Interactive WebView
 struct InteractiveWebView: UIViewRepresentable {
     let url: URL
@@ -818,73 +839,72 @@ struct LegislatorsGridView: View {
     let columns = [GridItem(.adaptive(minimum: 160), spacing: 16)]
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color(UIColor.systemGroupedBackground)
-                    .ignoresSafeArea()
-                
-                VStack {
-                    if isLoading && fetcher.legislators.isEmpty {
-                        loadingView
-                    } else if !fetcher.legislators.isEmpty {
-                        legislatorGrid
-                    } else {
-                        emptyStateView
-                    }
-                }
-            }
-            .navigationTitle("Your Representatives")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: forceRefreshData) {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .disabled(locationStorage.savedCoordinate == nil || isLoading)
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showLocationPicker = true }) {
-                        Label("Change Location", systemImage: "mappin.and.ellipse")
-                    }
-                    .buttonStyle(.bordered)
-                }
-            }
-            .sheet(isPresented: $showLocationPicker) {
-                NavigationView {
-                    LocationPickerView { coordinate in
-                        locationStorage.save(coordinate: coordinate)
-                        fetchData(for: coordinate)
-                    }
-                }
-            }
-            .alert("Location Access Required", isPresented: $showingLocationPermissionAlert) {
-                Button("Settings", role: .destructive) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("Please enable location access in Settings to find representatives in your area.")
-            }
-            .task {
-                if let savedCoord = locationStorage.savedCoordinate {
-                    fetchData(for: savedCoord)
+        ZStack {
+            Color(UIColor.systemGroupedBackground)
+                .ignoresSafeArea()
+            
+            VStack {
+                if isLoading && fetcher.legislators.isEmpty {
+                    loadingView
+                } else if !fetcher.legislators.isEmpty {
+                    legislatorGrid
                 } else {
-                    locationManager.requestLocation()
-                }
-            }
-            .onChange(of: locationManager.location) { newLocation in
-                guard let location = newLocation, locationStorage.savedCoordinate == nil else { return }
-                locationStorage.save(coordinate: location.coordinate)
-                fetchData(for: location.coordinate)
-            }
-            .onChange(of: locationManager.authorizationStatus) { status in
-                if status == .denied || status == .restricted {
-                    showingLocationPermissionAlert = true
+                    emptyStateView
                 }
             }
         }
+        .navigationTitle("Your Representatives")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button(action: forceRefreshData) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .disabled(locationStorage.savedCoordinate == nil || isLoading)
+            }
+            
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showLocationPicker = true }) {
+                    Label("Change Location", systemImage: "mappin.and.ellipse")
+                }
+                .buttonStyle(.bordered)
+            }
+        }
+        .sheet(isPresented: $showLocationPicker) {
+            NavigationView {
+                LocationPickerView { coordinate in
+                    locationStorage.save(coordinate: coordinate)
+                    fetchData(for: coordinate)
+                }
+            }
+        }
+        .alert("Location Access Required", isPresented: $showingLocationPermissionAlert) {
+            Button("Settings", role: .destructive) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Please enable location access in Settings to find representatives in your area.")
+        }
+        .task {
+            if let savedCoord = locationStorage.savedCoordinate {
+                fetchData(for: savedCoord)
+            } else {
+                locationManager.requestLocation()
+            }
+        }
+        .onChange(of: locationManager.location) { newLocation in
+            guard let location = newLocation, locationStorage.savedCoordinate == nil else { return }
+            locationStorage.save(coordinate: location.coordinate)
+            fetchData(for: location.coordinate)
+        }
+        .onChange(of: locationManager.authorizationStatus) { status in
+            if status == .denied || status == .restricted {
+                showingLocationPermissionAlert = true
+            }
+        }
+        
     }
     
     private func fetchData(for coordinate: CLLocationCoordinate2D, forceRefresh: Bool = false) {

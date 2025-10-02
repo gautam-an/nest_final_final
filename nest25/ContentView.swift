@@ -15,7 +15,7 @@ struct ContentView: View {
                     .zIndex(1)
                     .transition(.asymmetric(
                         insertion: .identity,
-                        removal: .opacity.combined(with: .scale(scale: 0.9))
+                        removal: .opacity  // Remove the .scale part
                     ))
             }
             
