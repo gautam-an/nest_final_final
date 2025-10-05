@@ -4,31 +4,35 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        NavigationView {
-            TabView(selection: $selectedTab) {
-                    
+        TabView(selection: $selectedTab) {
+            NavigationView {
                 NewsFeedView()
-                    .tabItem {
-                        Label("News", systemImage: "newspaper.fill")
-                    }
-                    .tag(0)
-                
-                LegislatorsGridView()
-                    .tabItem {
-                        Label("Legislators", systemImage: "person.3.fill")
-                    }
-                    .tag(1)
-                
-
-                VotingInfoView()
-                    .tabItem {
-                        Label("Voting", systemImage: "info.circle.fill")
-                    }
-                    .tag(2)
             }
-            .accentColor(Color("PrimaryBlue"))
+            .navigationViewStyle(.stack)
+            .tabItem {
+                Label("News", systemImage: "newspaper.fill")
+            }
+            .tag(0)
+            
+            NavigationView {
+                LegislatorsGridView()
+            }
+            .navigationViewStyle(.stack)
+            .tabItem {
+                Label("Legislators", systemImage: "person.3.fill")
+            }
+            .tag(1)
+            
+            NavigationView {
+                VotingInfoView()
+            }
+            .navigationViewStyle(.stack)
+            .tabItem {
+                Label("Voting", systemImage: "info.circle.fill")
+            }
+            .tag(2)
         }
-        .navigationViewStyle(.stack)
+        .accentColor(Color("PrimaryBlue"))
     }
 }
 

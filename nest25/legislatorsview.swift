@@ -682,7 +682,8 @@ struct InteractiveWebView: UIViewRepresentable {
     
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var parent: InteractiveWebView
-        
+        var pendingContactUrl: String? = nil
+
         let javascriptToRun = """
         function findContactInfo() {
             const mailtoLink = document.querySelector('a[href^="mailto:"]');
@@ -699,12 +700,39 @@ struct InteractiveWebView: UIViewRepresentable {
         
         window.webkit.messageHandlers.scraper.postMessage(findContactInfo());
         """
-        
+
         init(_ parent: InteractiveWebView) { self.parent = parent }
-        
+
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let dict = message.body as? [String: Any?] else { return }
-            parent.onScrapeCompleted(dict)
+            let email = dict["email"] as? String
+            let contactUrl = dict["contactUrl"] as? String
+
+            if let email = email {
+                // Found email, report back
+                parent.onScrapeCompleted(["email": email, "contactUrl": nil])
+            } else if let url = contactUrl {
+                // Contact page exists but no email yet
+                pendingContactUrl = url
+            } else {
+                // Nothing found
+                parent.onScrapeCompleted(["email": nil, "contactUrl": pendingContactUrl])
+                pendingContactUrl = nil
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            // If pending contact page, load it and scrape again
+            if let urlString = pendingContactUrl, let url = URL(string: urlString) {
+                pendingContactUrl = nil
+                webView.load(URLRequest(url: url))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    webView.evaluateJavaScript(self.javascriptToRun)
+                }
+            } else {
+                // Scrape current page
+                webView.evaluateJavaScript(javascriptToRun)
+            }
         }
     }
 }
@@ -722,6 +750,8 @@ struct LegislatorDetailView: View {
     @State private var triggerScraping = false
     @State private var scrapeResult: ScrapeResult?
     @State private var isScraping = false
+    @State private var webViewLoaded = false
+    @State private var showContactError = false
     
     var body: some View {
         ZStack {
@@ -738,10 +768,17 @@ struct LegislatorDetailView: View {
                             self.scrapeResult = ScrapeResult(email: email, contactUrl: url)
                         } else {
                             print("❌ Scrape found no contact info.")
+                            self.showContactError = true
                         }
                     }
                 )
                 .ignoresSafeArea(edges: .bottom)
+                .onAppear {
+                    // Give WebView time to load before allowing scraping
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        webViewLoaded = true
+                    }
+                }
             } else {
                 VStack(spacing: 20) {
                     Image(systemName: "person.fill.questionmark")
@@ -783,14 +820,23 @@ struct LegislatorDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: {
+                    guard webViewLoaded else {
+                        showContactError = true
+                        return
+                    }
                     self.isScraping = true
                     self.triggerScraping = true
                 }) {
                     Label("Contact", systemImage: "envelope.fill")
                 }
-                .disabled(isScraping)
+                .disabled(isScraping || !webViewLoaded)
                 .buttonStyle(.borderedProminent)
             }
+        }
+        .alert("Contact Information Unavailable", isPresented: $showContactError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("We couldn't find contact information on this page. Please try visiting their profile directly.")
         }
         .sheet(item: $scrapeResult) { result in
             if let email = result.email {
@@ -812,7 +858,6 @@ struct LegislatorDetailView: View {
             }
         }
     }
-    
     private struct WebView2: UIViewRepresentable {
         let url: URL
         
