@@ -427,7 +427,7 @@ struct ContactView: View {
     @State private var subject: String = ""
     @State private var intro: String
     @State private var question: String = ""
-    @State private var makeQuestionPublic: Bool = true // Add this state
+    @State private var makeQuestionPublic: Bool = true
     @State private var showMailSheet = false
     @StateObject private var questionFetcher = QuestionFetcher()
     @State private var relevantQuestions: [AskedQuestion] = []
@@ -588,7 +588,6 @@ struct ContactView: View {
                                 )
                         }
                         
-                        // Add the toggle here
                         VStack(alignment: .leading, spacing: 8) {
                             Toggle(isOn: $makeQuestionPublic) {
                                 VStack(alignment: .leading, spacing: 4) {
@@ -655,6 +654,7 @@ struct ContactView: View {
         }
     }
 }
+
 // MARK: - Interactive WebView
 struct InteractiveWebView: UIViewRepresentable {
     let url: URL
@@ -709,20 +709,16 @@ struct InteractiveWebView: UIViewRepresentable {
             let contactUrl = dict["contactUrl"] as? String
 
             if let email = email {
-                // Found email, report back
                 parent.onScrapeCompleted(["email": email, "contactUrl": nil])
             } else if let url = contactUrl {
-                // Contact page exists but no email yet
                 pendingContactUrl = url
             } else {
-                // Nothing found
                 parent.onScrapeCompleted(["email": nil, "contactUrl": pendingContactUrl])
                 pendingContactUrl = nil
             }
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            // If pending contact page, load it and scrape again
             if let urlString = pendingContactUrl, let url = URL(string: urlString) {
                 pendingContactUrl = nil
                 webView.load(URLRequest(url: url))
@@ -730,7 +726,6 @@ struct InteractiveWebView: UIViewRepresentable {
                     webView.evaluateJavaScript(self.javascriptToRun)
                 }
             } else {
-                // Scrape current page
                 webView.evaluateJavaScript(javascriptToRun)
             }
         }
@@ -744,6 +739,23 @@ struct ScrapeResult: Identifiable {
     let contactUrl: String?
 }
 
+// MARK: - Email Storage Class
+class EmailStorage {
+    static let shared = EmailStorage()
+    private var emailCache: [String: String] = [:]
+    
+    private init() {}
+    
+    func saveEmail(_ email: String, forLegislatorId id: String) {
+        emailCache[id] = email
+        print("✅ Stored email for legislator \(id): \(email)")
+    }
+    
+    func getEmail(forLegislatorId id: String) -> String? {
+        return emailCache[id]
+    }
+}
+
 // MARK: - Legislator Detail View
 struct LegislatorDetailView: View {
     let legislator: Legislator
@@ -752,6 +764,7 @@ struct LegislatorDetailView: View {
     @State private var isScraping = false
     @State private var webViewLoaded = false
     @State private var showContactError = false
+    @State private var cachedEmail: String?
     
     var body: some View {
         ZStack {
@@ -764,17 +777,27 @@ struct LegislatorDetailView: View {
                         let email = resultDict["email"] as? String
                         let url = resultDict["contactUrl"] as? String
                         
-                        if email != nil || url != nil {
-                            self.scrapeResult = ScrapeResult(email: email, contactUrl: url)
+                        if let foundEmail = email {
+                            EmailStorage.shared.saveEmail(foundEmail, forLegislatorId: legislator.id)
+                            self.cachedEmail = foundEmail
+                            self.scrapeResult = ScrapeResult(email: foundEmail, contactUrl: url)
+                        } else if url != nil {
+                            self.scrapeResult = ScrapeResult(email: nil, contactUrl: url)
                         } else {
                             print("❌ Scrape found no contact info.")
-                            self.showContactError = true
+                            if let stored = EmailStorage.shared.getEmail(forLegislatorId: legislator.id) {
+                                print("✅ Using previously stored email: \(stored)")
+                                self.cachedEmail = stored
+                                self.scrapeResult = ScrapeResult(email: stored, contactUrl: nil)
+                            } else {
+                                self.showContactError = true}
                         }
                     }
                 )
                 .ignoresSafeArea(edges: .bottom)
                 .onAppear {
-                    // Give WebView time to load before allowing scraping
+                    cachedEmail = EmailStorage.shared.getEmail(forLegislatorId: legislator.id)
+                    
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         webViewLoaded = true
                     }
@@ -824,8 +847,14 @@ struct LegislatorDetailView: View {
                         showContactError = true
                         return
                     }
-                    self.isScraping = true
-                    self.triggerScraping = true
+                    
+                    if let stored = cachedEmail {
+                        print("✅ Using cached email without scraping: \(stored)")
+                        self.scrapeResult = ScrapeResult(email: stored, contactUrl: nil)
+                    } else {
+                        self.isScraping = true
+                        self.triggerScraping = true
+                    }
                 }) {
                     Label("Contact", systemImage: "envelope.fill")
                 }
@@ -858,6 +887,7 @@ struct LegislatorDetailView: View {
             }
         }
     }
+    
     private struct WebView2: UIViewRepresentable {
         let url: URL
         
@@ -880,7 +910,7 @@ struct LegislatorsGridView: View {
     @State private var isLoading = false
     @State private var showingLocationPermissionAlert = false
     
-    let apiKey = "bc839aae-7609-47f9-82ed-c280c4ca07dd" // Your API Key
+    let apiKey = "bc839aae-7609-47f9-82ed-c280c4ca07dd"
     let columns = [GridItem(.adaptive(minimum: 160), spacing: 16)]
     
     var body: some View {
@@ -1156,7 +1186,10 @@ struct LegislatorsGridView: View {
 struct ElectConnectApp: App {
     var body: some Scene {
         WindowGroup {
-            LegislatorsGridView()
+            NavigationView {
+                LegislatorsGridView()
+            }
         }
     }
 }
+            
