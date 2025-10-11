@@ -9,7 +9,7 @@ struct VotingInfoView: View {
     @State private var showAbout = false
 
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     // Voting Info Section
@@ -66,11 +66,11 @@ struct VotingInfoView: View {
                         }
                         .padding(.horizontal)
 
-                        // About ElectConnect
+                        // About Elect Connect
                         Button {
                             showAbout = true
                         } label: {
-                            SettingsRowView(title: "About ElectConnect", iconName: "info.circle.fill")
+                            SettingsRowView(title: "About Elect Connect", iconName: "info.circle.fill")
                         }
                         .sheet(isPresented: $showAbout) {
                             AboutElectConnectView()
@@ -305,14 +305,14 @@ struct TermsPrivacyView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("ElectConnect Privacy Policy")
+                Text("Elect Connect Privacy Policy")
                     .font(.title)
                     .fontWeight(.bold)
 
                 Text("Last Updated: September 25, 2025")
 
                 Text("""
-ElectConnect ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.
+Elect Connect ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.
 
 Information We Collect
 - Location Information: We collect your GPS coordinates to identify your elected representatives.
@@ -361,7 +361,7 @@ Data Deletion
 - Contact us at gautam.anamalai@gmail.com with subject "Data Deletion Request".
 
 Contact Us
-- Email: gautam.anamalai@gmail.com (Subject: "Privacy Inquiry - ElectConnect").
+- Email: gautam.anamalai@gmail.com (Subject: "Privacy Inquiry - Elect Connect").
 
 Legal Basis for Processing
 - Consent, Legitimate Interest, Public Interest.
@@ -386,7 +386,7 @@ struct CommunityGuidelinesView: View {
                 Group {
                     Text("Respectful Use")
                         .font(.headline)
-                    Text("Use ElectConnect to engage constructively with elected officials. Harassment, spam, or illegal activity is prohibited.")
+                    Text("Use Elect Connect to engage constructively with elected officials. Harassment, spam, or illegal activity is prohibited.")
                 }
 
                 Group {
@@ -412,14 +412,14 @@ struct AboutElectConnectView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("About ElectConnect")
+                Text("About Elect Connect")
                     .font(.title)
                     .fontWeight(.bold)
 
                 Group {
                     Text("Our Mission")
                         .font(.headline)
-                    Text("ElectConnect is built to make election info more accessible and useful. We're focused on helping people stay informed, not overwhelmed.")
+                    Text("Elect Connect is built to make election info more accessible and useful. We're focused on helping people stay informed, not overwhelmed.")
                 }
 
                 Group {
@@ -431,13 +431,13 @@ struct AboutElectConnectView: View {
                 Group {
                     Text("Version Info")
                         .font(.headline)
-                    Text("ElectConnect v1.0.\nSwiftUI • iOS")
+                    Text("Elect Connect v2.1.\nSwiftUI • iOS")
                 }
 
                 Group {
                     Text("Open Source")
                         .font(.headline)
-                    Text("We're currently developing ElectConnect with plans to make parts of it open source in the future.")
+                    Text("We're currently developing Elect Connect with plans to make parts of it open source in the future.")
                 }
 
                 Spacer()

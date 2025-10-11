@@ -15,7 +15,7 @@ struct OnboardingView: View {
     
     private let pages = [
         OnboardingPage(
-            title: "Welcome to ElectConnect",
+            title: "Welcome to Elect Connect",
             description: "Your non-partisan guide to civic action, turning political confusion into confident engagement.",
             imageName: "person.3.fill",
             buttonText: "Continue"

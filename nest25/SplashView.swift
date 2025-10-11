@@ -67,7 +67,7 @@ struct SplashView: View {
                     
                     // App name
                     VStack(spacing: 8) {
-                        Text("ElectConnect")
+                        Text("Elect Connect")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         

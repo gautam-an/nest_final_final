@@ -448,7 +448,7 @@ struct ContactView: View {
     
     var emailBody: String {
         intro + invisibleSeparator + question + invisibleSeparator +
-        "\n\nThis is an email from the app ElectConnect, which aims to connnect voters to their elected officials"
+        "\n\nThis is an email from the app Elect Connect, which aims to connnect voters to their elected officials"
     }
     
     var body: some View {

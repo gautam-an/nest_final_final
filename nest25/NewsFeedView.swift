@@ -15,7 +15,7 @@ struct NewsFeedView: View {
     @AppStorage("selectedTopics") private var storedTopics: String = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 16) {
                     if selectedTopics.isEmpty {
