@@ -349,7 +349,7 @@ Third-Party Services
 - OpenStates, GitHub, Google Sheets.
 
 Children's Privacy
-- Intended for users 13 years and older.
+- Intended for users 17 years and older.
 
 International Users
 - Data may be transferred to and processed in the United States.
@@ -431,7 +431,7 @@ struct AboutElectConnectView: View {
                 Group {
                     Text("Version Info")
                         .font(.headline)
-                    Text("Elect Connect v2.1.\nSwiftUI • iOS")
+                    Text("Elect Connect v1.0.\nSwiftUI • iOS")
                 }
 
                 Group {

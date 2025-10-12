@@ -21,13 +21,13 @@ struct OnboardingView: View {
             buttonText: "Continue"
         ),
         OnboardingPage(
-            title: "Town Hall",
+            title: "Town Hall (Coming Soon)",
             description: "Watch live streams of candidate events with live fact-checking and stay connected with your representatives.",
             imageName: "video.fill",
             buttonText: "Continue"
         ),
         OnboardingPage(
-            title: "Find Your Polling Place",
+            title: "Find Your Polling Place (Coming Soon)",
             description: "Based on your location, easily find nearby polling places and their hours of operation.",
             imageName: "mappin.circle.fill",
             buttonText: "Continue"
