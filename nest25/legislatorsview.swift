@@ -681,55 +681,49 @@ struct InteractiveWebView: UIViewRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-        var parent: InteractiveWebView
-        var pendingContactUrl: String? = nil
+            var parent: InteractiveWebView
+            var hasScraped = false
 
-        let javascriptToRun = """
-        function findContactInfo() {
-            const mailtoLink = document.querySelector('a[href^="mailto:"]');
-            if (mailtoLink) { return { email: mailtoLink.href.replace('mailto:', '').split('?')[0], contactUrl: null }; }
-            
-            const contactPageLink = Array.from(document.querySelectorAll('a')).find(a => 
-                (a.textContent.toLowerCase().includes('contact') || a.href.toLowerCase().includes('contact')) && 
-                a.href.startsWith('http')
-            );
-            
-            if (contactPageLink) { return { email: null, contactUrl: contactPageLink.href }; }
-            return { email: null, contactUrl: null };
-        }
-        
-        window.webkit.messageHandlers.scraper.postMessage(findContactInfo());
-        """
-
-        init(_ parent: InteractiveWebView) { self.parent = parent }
-
-        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard let dict = message.body as? [String: Any?] else { return }
-            let email = dict["email"] as? String
-            let contactUrl = dict["contactUrl"] as? String
-
-            if let email = email {
-                parent.onScrapeCompleted(["email": email, "contactUrl": nil])
-            } else if let url = contactUrl {
-                pendingContactUrl = url
-            } else {
-                parent.onScrapeCompleted(["email": nil, "contactUrl": pendingContactUrl])
-                pendingContactUrl = nil
+            let javascriptToRun = """
+            function findContactInfo() {
+                const mailtoLink = document.querySelector('a[href^="mailto:"]');
+                if (mailtoLink) { return { email: mailtoLink.href.replace('mailto:', '').split('?')[0], contactUrl: null }; }
+                
+                const contactPageLink = Array.from(document.querySelectorAll('a')).find(a => 
+                    (a.textContent.toLowerCase().includes('contact') || a.href.toLowerCase().includes('contact')) && 
+                    a.href.startsWith('http')
+                );
+                
+                if (contactPageLink) { return { email: null, contactUrl: contactPageLink.href }; }
+                return { email: null, contactUrl: null };
             }
-        }
+            
+            window.webkit.messageHandlers.scraper.postMessage(findContactInfo());
+            """
 
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            if let urlString = pendingContactUrl, let url = URL(string: urlString) {
-                pendingContactUrl = nil
-                webView.load(URLRequest(url: url))
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    webView.evaluateJavaScript(self.javascriptToRun)
+            init(_ parent: InteractiveWebView) { self.parent = parent }
+
+            func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+                guard let dict = message.body as? [String: Any?] else { return }
+                let email = dict["email"] as? String
+                let contactUrl = dict["contactUrl"] as? String
+
+                if let email = email {
+                    parent.onScrapeCompleted(["email": email, "contactUrl": nil])
+                } else if let url = contactUrl {
+                    parent.onScrapeCompleted(["email": nil, "contactUrl": url])
+                } else {
+                    parent.onScrapeCompleted(["email": nil, "contactUrl": nil])
                 }
-            } else {
-                webView.evaluateJavaScript(javascriptToRun)
+                hasScraped = true
+            }
+
+            func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+                if !hasScraped {
+                    webView.evaluateJavaScript(javascriptToRun)
+                }
             }
         }
-    }
 }
 
 // MARK: - Scrape Result Data Structure
