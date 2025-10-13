@@ -2,14 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Allow network loads (disable ATS restrictions) -->
     <key>NSAppTransportSecurity</key>
     <dict>
         <key>NSAllowsArbitraryLoads</key>
         <true/>
     </dict>
 
-    <!-- Supported interface orientations for iPhone -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Your location is used to identify your elected representatives and personalize your experience in Elect Connect.</string>
+
     <key>UISupportedInterfaceOrientations</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
@@ -18,7 +19,6 @@
         <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
 
-    <!-- Supported interface orientations for iPad -->
     <key>UISupportedInterfaceOrientations~ipad</key>
     <array>
         <string>UIInterfaceOrientationPortrait</string>
