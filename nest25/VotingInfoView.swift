@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 struct VotingInfoView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = true
@@ -174,37 +175,41 @@ struct InfoCardView: View {
                 InfoSection(
                     heading: "Online Registration",
                     body: [
-                        "Register online through the Virginia Department of Elections.",
-                        "You'll need a valid Virginia driver’s license or state-issued ID."
+                        "Most states offer online voter registration through their state election website.",
+                        "You'll typically need a valid driver's license or state-issued ID.",
+                        "Check your state's specific requirements and registration portal."
                     ],
-                    link: URL(string: "https://vote.elections.virginia.gov/VoterInformation"),
+                    link: URL(string: "https://www.vote.gov/register"),
                     iconName: "desktopcomputer"
                 ),
                 InfoSection(
                     heading: "Register by Mail",
                     body: [
-                        "Print and complete the application form, then mail it to your local registrar.",
-                        "It must be postmarked by the registration deadline."
+                        "Download and complete the National Mail Voter Registration Form.",
+                        "Mail it to your local election office by your state's deadline.",
+                        "Forms must be postmarked by the registration deadline."
                     ],
-                    link: URL(string: "https://www.elections.virginia.gov/registration/how-to-register/"),
+                    link: URL(string: "https://www.eac.gov/voters/national-mail-voter-registration-form"),
                     iconName: "envelope.fill"
                 ),
                 InfoSection(
                     heading: "Register In Person",
                     body: [
-                        "Visit your local registrar’s office, DMV, or other designated agencies.",
-                        "Make sure to bring valid identification."
+                        "Visit your local election office, DMV, or other designated agencies.",
+                        "Bring valid identification as required by your state.",
+                        "Some states offer same-day registration at polling locations."
                     ],
                     link: nil,
                     iconName: "person.crop.circle.badge.checkmark"
                 ),
                 InfoSection(
-                    heading: "Deadline",
+                    heading: "Registration Deadlines",
                     body: [
-                        "Registration must be completed 22 days before the election.",
-                        "Some late registration may be possible during early voting."
+                        "Deadlines vary by state, typically ranging from 15-30 days before an election.",
+                        "Some states offer same-day registration during early voting or on election day.",
+                        "Check your state's specific deadline to ensure you're registered in time."
                     ],
-                    link: nil,
+                    link: URL(string: "https://www.vote.gov/register"),
                     iconName: "calendar"
                 )
             ]
@@ -214,27 +219,33 @@ struct InfoCardView: View {
                 InfoSection(
                     heading: "Eligibility",
                     body: [
-                        "You must be a U.S. citizen, a resident of Virginia, and at least 18 years old by election day.",
-                        "You must not be under a disqualifying felony conviction (unless rights restored)."
+                        "You must be a U.S. citizen and a resident of your state.",
+                        "You must be at least 18 years old by election day.",
+                        "Most states require you not to be serving a felony sentence (requirements vary by state).",
+                        "Some states allow 17-year-olds to vote in primaries if they'll be 18 by the general election."
                     ],
-                    link: nil,
+                    link: URL(string: "https://www.usa.gov/who-can-vote"),
                     iconName: "checkmark.shield"
                 ),
                 InfoSection(
-                    heading: "Accepted ID",
+                    heading: "Voter ID Requirements",
                     body: [
-                        "Bring a valid ID such as a driver’s license, U.S. passport, or student ID.",
-                        "No ID? You can sign an ID Confirmation Statement at the polls."
+                        "ID requirements vary significantly by state.",
+                        "Some states require photo ID, others accept non-photo documents, and some require no ID.",
+                        "Accepted IDs may include driver's license, passport, state ID, military ID, or student ID.",
+                        "Check your state's specific ID requirements before heading to the polls."
                     ],
-                    link: URL(string: "https://www.elections.virginia.gov/registration/voter-id/"),
+                    link: URL(string: "https://www.usa.gov/voter-id"),
                     iconName: "person.text.rectangle"
                 ),
                 InfoSection(
-                    heading: "Need Help?",
+                    heading: "Check Your Registration",
                     body: [
-                        "Check your registration status or find official resources at the Virginia Elections site."
+                        "Verify your voter registration status online.",
+                        "Confirm your polling location and hours.",
+                        "Find official election resources for your state."
                     ],
-                    link: URL(string: "https://www.elections.virginia.gov/"),
+                    link: URL(string: "https://www.vote.gov/"),
                     iconName: "questionmark.circle"
                 )
             ]
@@ -303,75 +314,21 @@ struct MoreInfoView: View {
 
 struct TermsPrivacyView: View {
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("Elect Connect Privacy Policy")
-                    .font(.title)
-                    .fontWeight(.bold)
+        WebView(url: URL(string: "https://jacobpercy.github.io/ecpv/privacy.html")!)
+            .edgesIgnoringSafeArea(.all)
+    }
+}
 
-                Text("Last Updated: September 25, 2025")
-
-                Text("""
-Elect Connect ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, and safeguard your information when you use our mobile application.
-
-Information We Collect
-- Location Information: We collect your GPS coordinates to identify your elected representatives.
-- Personal Preferences: Your selected political topics, onboarding data, app settings.
-- Communication Data: We facilitate email composition to representatives, store question history.
-- Usage Information: We collect anonymized feature usage and engagement.
-
-How We Use Your Information
-- Identify your elected representatives based on location.
-- Personalize news content to your selected interests.
-- Facilitate communication with your representatives.
-- Improve app functionality and user experience.
-
-Data Sharing
-We share your information with:
-- OpenStates API, News Sources, Email Providers, Google Sheets.
-
-Data Security
-- Location data encrypted during transmission.
-- Local data storage uses iOS security frameworks.
-- No sensitive personal identifiers collected.
-
-Data Retention
-- Location data stored until you change your location or delete the app.
-- Cached legislator data refreshed periodically.
-- User preferences retained until app deletion.
-- Email copies stored indefinitely for support purposes.
-
-Your Privacy Rights
-- Control your data (location, topics, data deletion, email opt-out).
-- Access, correct, or export your data.
-
-Third-Party Services
-- OpenStates, GitHub, Google Sheets.
-
-Children's Privacy
-- Intended for users 17 years and older.
-
-International Users
-- Data may be transferred to and processed in the United States.
-
-Changes to This Policy
-- We may update this policy periodically. Continued use constitutes acceptance.
-
-Data Deletion
-- Contact us at gautam.anamalai@gmail.com with subject "Data Deletion Request".
-
-Contact Us
-- Email: gautam.anamalai@gmail.com (Subject: "Privacy Inquiry - Elect Connect").
-
-Legal Basis for Processing
-- Consent, Legitimate Interest, Public Interest.
-""")
-                .font(.body)
-
-                Spacer()
-            }
-            .padding()
-        }
+struct WebView: UIViewRepresentable {
+    let url: URL
+    
+    func makeUIView(context: Context) -> WKWebView {
+        return WKWebView()
+    }
+    
+    func updateUIView(_ webView: WKWebView, context: Context) {
+        let request = URLRequest(url: url)
+        webView.load(request)
     }
 }
 
