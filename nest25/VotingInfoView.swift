@@ -4,7 +4,7 @@ import WebKit
 struct VotingInfoView: View {
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = true
     @AppStorage("userEmail") private var userEmail: String = ""
-    @State private var showingLogoutAlert = false
+    @State private var showingComingSoon = false
     @State private var showPrivacy = false
     @State private var showGuidelines = false
     @State private var showAbout = false
@@ -85,11 +85,51 @@ struct VotingInfoView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        showingLogoutAlert = true
+                        showingComingSoon = true
                     } label: {
                         Image(systemName: "person.crop.circle")
                             .imageScale(.large)
                             .foregroundColor(Color("PrimaryBlue"))
+                    }
+                }
+            }
+            .sheet(isPresented: $showingComingSoon) {
+                ComingSoonView()
+            }
+        }
+    }
+}
+
+struct ComingSoonView: View {
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Spacer()
+                
+                Image(systemName: "clock.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(Color("PrimaryBlue"))
+                
+                Text("Coming Soon")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                
+                Text("Profile features are currently under development and will be available in a future update.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                
+                Spacer()
+            }
+            .navigationTitle("Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
                     }
                 }
             }

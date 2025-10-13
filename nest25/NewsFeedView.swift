@@ -137,19 +137,8 @@ struct TopicSettingsView: View {
             }
             .navigationTitle("Topics")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        onSave()
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                }
+            .onDisappear {
+                onSave()
             }
         }
     }
