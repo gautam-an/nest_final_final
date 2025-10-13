@@ -41,25 +41,26 @@ struct ContentView: View {
         }
         .preferredColorScheme(.light)
         .onChange(of: shouldDismissSplash) { newValue in
-            if newValue {
-                withAnimation(.spring(response: 0.8, dampingFraction: 0.8)) {
-                    contentScale = 1.0
-                    contentOpacity = 1.0
-                }
-                
-                withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
-                    isShowingSplash = false
-                }
+            guard newValue else { return }
+            
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.8)) {
+                contentScale = 1.0
+                contentOpacity = 1.0
+            }
+            
+            withAnimation(.easeOut(duration: 0.6).delay(0.2)) {
+                isShowingSplash = false
             }
         }
+
         .onChange(of: isOnboarded) { newValue in
-            if newValue {
-                // Smooth transition from onboarding to main content
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    // The transition modifiers will handle the view change
-                }
+            guard newValue else { return }
+            
+            withAnimation(.easeInOut(duration: 0.6)) {
             }
         }
+
+
         .onAppear {
             // Prepare the content behind the splash
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {

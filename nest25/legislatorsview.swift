@@ -964,15 +964,21 @@ struct LegislatorsGridView: View {
             }
         }
         .onChange(of: locationManager.location) { newLocation in
-            guard let location = newLocation, locationStorage.savedCoordinate == nil else { return }
-            locationStorage.save(coordinate: location.coordinate)
-            fetchData(for: location.coordinate)
-        }
-        .onChange(of: locationManager.authorizationStatus) { status in
-            if status == .denied || status == .restricted {
-                showingLocationPermissionAlert = true
+            if let location = newLocation, locationStorage.savedCoordinate == nil {
+                locationStorage.save(coordinate: location.coordinate)
+                fetchData(for: location.coordinate)
             }
         }
+
+        .onChange(of: locationManager.authorizationStatus) { newStatus in
+            switch newStatus {
+            case .denied, .restricted:
+                showingLocationPermissionAlert = true
+            default:
+                break
+            }
+        }
+
         
     }
     

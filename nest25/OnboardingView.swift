@@ -137,7 +137,10 @@ struct OnboardingView: View {
                     .animation(.easeInOut(duration: 0.2), value: tempSelectedTopics.count)
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, max(34, UIApplication.shared.windows.first?.safeAreaInsets.bottom ?? 0))
+                .padding(.bottom, max(34, UIApplication.shared.connectedScenes
+                                        .compactMap { $0 as? UIWindowScene }
+                                        .flatMap { $0.windows }
+                                        .first?.safeAreaInsets.bottom ?? 0))
             }
         }
     }
