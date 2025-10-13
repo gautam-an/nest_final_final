@@ -234,22 +234,30 @@ class QuestionFetcher: ObservableObject {
 struct LocationPickerView: View {
     @Environment(\.dismiss) var dismiss
     @State private var region: MKCoordinateRegion
+    @State private var cameraPosition: MapCameraPosition // New state for the map
     var onLocationSave: (CLLocationCoordinate2D) -> Void
     
     init(onLocationSave: @escaping (CLLocationCoordinate2D) -> Void) {
         self.onLocationSave = onLocationSave
-        _region = State(initialValue: MKCoordinateRegion(
+        let initialRegion = MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: 38.8899, longitude: -77.0091),
             span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
-        ))
+        )
+        // Set the initial values for both state variables
+        _region = State(initialValue: initialRegion)
+        _cameraPosition = State(initialValue: .region(initialRegion))
     }
     
     var body: some View {
         ZStack {
-            Map(coordinateRegion: $region)
+            // Use the new Map initializer and keep the `region` state in sync
+            Map(position: $cameraPosition)
+                .onMapCameraChange { context in
+                    self.region = context.region
+                }
                 .ignoresSafeArea()
             
-            // Center pin
+            // Center pin (No changes needed here)
             VStack {
                 Image(systemName: "mappin.circle.fill")
                     .font(.system(size: 40))
@@ -263,6 +271,7 @@ struct LocationPickerView: View {
                     .offset(y: -10)
             }
             
+            // Bottom card view (No changes needed here as it reads from `region`)
             VStack {
                 Spacer()
                 
@@ -956,21 +965,21 @@ struct LegislatorsGridView: View {
         } message: {
             Text("Please enable location access in Settings to find representatives in your area.")
         }
-        .task {
+        .onAppear {
             if let savedCoord = locationStorage.savedCoordinate {
                 fetchData(for: savedCoord)
             } else {
                 locationManager.requestLocation()
             }
         }
-        .onChange(of: locationManager.location) { newLocation in
+        .onChange(of: locationManager.location) { oldValue, newLocation in
             if let location = newLocation, locationStorage.savedCoordinate == nil {
                 locationStorage.save(coordinate: location.coordinate)
                 fetchData(for: location.coordinate)
             }
         }
 
-        .onChange(of: locationManager.authorizationStatus) { newStatus in
+        .onChange(of: locationManager.authorizationStatus) { oldValue, newStatus in
             switch newStatus {
             case .denied, .restricted:
                 showingLocationPermissionAlert = true

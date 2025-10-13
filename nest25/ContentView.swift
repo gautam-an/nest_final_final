@@ -40,7 +40,7 @@ struct ContentView: View {
             .blur(radius: isShowingSplash ? 8 : 0)
         }
         .preferredColorScheme(.light)
-        .onChange(of: shouldDismissSplash) { newValue in
+        .onChange(of: shouldDismissSplash) { oldValue, newValue in
             guard newValue else { return }
             
             withAnimation(.spring(response: 0.8, dampingFraction: 0.8)) {
@@ -52,15 +52,12 @@ struct ContentView: View {
                 isShowingSplash = false
             }
         }
-
-        .onChange(of: isOnboarded) { newValue in
+        .onChange(of: isOnboarded) { oldValue, newValue in
             guard newValue else { return }
             
             withAnimation(.easeInOut(duration: 0.6)) {
             }
         }
-
-
         .onAppear {
             // Prepare the content behind the splash
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
