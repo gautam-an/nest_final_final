@@ -4,10 +4,10 @@ import WebKit
 struct TownHallView: View {
     @State private var transcribedText: String = "It will create 500,000 jobs"
     @State private var claimResult: String = "False, there is evidence that this project will only create 20,000 jobs, and the carbon emissions will be great"
-    @State private var messageText: String = "" // State for the message bar
+    @State private var messageText: String = ""
     private let fetchInterval: TimeInterval = 5.0
-    private let serverURL = URL(string: "http://192.168.0.135:5020/text")! // Replace with your server endpoint
-    private let messageServerURL = URL(string: "http://192.168.0.135:5005/message")! // Endpoint for messages
+    private let serverURL = URL(string: "http://192.168.0.135:5020/text")!
+    private let messageServerURL = URL(string: "http://192.168.0.135:5005/message")!
 
     var body: some View {
         VStack {
@@ -92,7 +92,7 @@ struct TownHallView: View {
         let task = URLSession.shared.dataTask(with: request) { _, _, error in
             if error == nil {
                 DispatchQueue.main.async {
-                    messageText = "" // Clear the message bar after sending
+                    messageText = ""
                 }
             }
         }

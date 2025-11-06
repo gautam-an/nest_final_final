@@ -53,12 +53,11 @@ struct OnboardingView: View {
     ]
         
     private var totalPages: Int {
-        pages.count + 1  // +1 for the QuizPage at the end
+        pages.count + 1
     }
     
     var body: some View {
         ZStack {
-            // Gradient background
             LinearGradient(
                 gradient: Gradient(colors: [Color.white, Color("PrimaryBlue").opacity(0.05)]),
                 startPoint: .top,
@@ -67,7 +66,6 @@ struct OnboardingView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Progress indicator
                 HStack {
                     ForEach(0..<totalPages, id: \.self) { index in
                         Capsule()
@@ -79,7 +77,6 @@ struct OnboardingView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 20)
                 
-                // Content - Fixed height to ensure consistent button positioning
                 VStack(spacing: 0) {
                     TabView(selection: $currentPage) {
                         ForEach(0..<totalPages, id: \.self) { index in
@@ -100,7 +97,6 @@ struct OnboardingView: View {
                 }
                 .frame(maxHeight: .infinity)
                 
-                // Bottom section with buttons - Fixed position
                 VStack(spacing: 16) {
                     Button(action: {
                         withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
@@ -145,19 +141,10 @@ struct OnboardingView: View {
         }
     }
 }
-
-// Other structs (QuizPage, TopicCard, OnboardingPage, OnboardingPageView) remain unchanged
-
-// Your QuizPage and TopicCard are exactly the same as in your original code snippet.
-
-
-// All other supporting structs (QuizPage, TopicCard, OnboardingPage, OnboardingPageView, OnboardingView_Previews) remain the same.
-
 struct QuizPage: View {
     @Binding var selectedTopics: [String]
     @Binding var isOnboarded: Bool
     
-    // Using the same topics structure as the first file for consistency
     let topics = [
         ("Technology", "desktopcomputer", "technology", Color.blue),
         ("Economy", "chart.bar.fill", "economics", Color.green),
@@ -168,7 +155,6 @@ struct QuizPage: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Header - Compact version
             VStack(spacing: 12) {
                 Image(systemName: "sparkles")
                     .font(.system(size: 32))
@@ -191,7 +177,6 @@ struct QuizPage: View {
             .padding(.top, 20)
             .padding(.bottom, 24)
             
-            // Topics grid - Optimized for no scrolling
             VStack(spacing: 12) {
                 ForEach(Array(topics.enumerated()), id: \.offset) { index, topic in
                     TopicCard(
@@ -216,7 +201,6 @@ struct QuizPage: View {
             
             Spacer()
             
-            // Selection counter - Compact version
             if !selectedTopics.isEmpty {
                 HStack {
                     Image(systemName: "checkmark.circle.fill")
@@ -249,7 +233,6 @@ struct TopicCard: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                // Icon container - Smaller
                 ZStack {
                     Circle()
                         .fill(isSelected ? Color("PrimaryBlue") : color.opacity(0.1))
@@ -260,7 +243,6 @@ struct TopicCard: View {
                         .foregroundColor(isSelected ? .white : color)
                 }
                 
-                // Text
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
                         .font(.body)
@@ -271,7 +253,6 @@ struct TopicCard: View {
                 
                 Spacer()
                 
-                // Selection indicator - Smaller
                 ZStack {
                     Circle()
                         .stroke(Color("PrimaryBlue").opacity(0.3), lineWidth: 2)
@@ -320,7 +301,6 @@ struct OnboardingPageView: View {
         VStack(spacing: 32) {
             Spacer()
             
-            // Icon with animated background
             ZStack {
                 Circle()
                     .fill(Color("PrimaryBlue").opacity(0.1))
@@ -340,7 +320,6 @@ struct OnboardingPageView: View {
             }
             .padding(.top, 40)
             
-            // Text content
             VStack(spacing: 16) {
                 Text(page.title)
                     .font(.largeTitle)

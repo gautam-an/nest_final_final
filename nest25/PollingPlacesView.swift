@@ -14,7 +14,6 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.startUpdatingLocation()
-        // Set default location to Ashburn, VA
         self.location = CLLocation(latitude: 39.0388, longitude: -77.4866)
     }
     
@@ -115,12 +114,10 @@ struct PollingPlacesView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @GestureState private var dragOffset: CGFloat = 0
-    @State private var listHeight: CGFloat = 250 // default height
+    @State private var listHeight: CGFloat = 250
     
-    // Updated user location to 41836 Bloomfield Path St, Ashburn, VA 20148
     let userLocation = CLLocationCoordinate2D(latitude: 39.0388, longitude: -77.4866)
     
-    // Updated polling places for Ashburn, VA area based on actual locations
     let pollingPlacesAshburn = [
         PollingPlace(coordinate: .init(latitude: 39.0437, longitude: -77.4875), title: "Ashburn Elementary School", type: .school, address: "44062 Fincastle Dr, Ashburn, VA 20147", distance: nil),
         PollingPlace(coordinate: .init(latitude: 39.0551, longitude: -77.4752), title: "Cedar Lane Elementary School", type: .school, address: "43700 Tolamac Dr, Ashburn, VA 20147", distance: nil),
@@ -186,10 +183,9 @@ struct PollingPlacesView: View {
                                     .onEnded { value in
                                         withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                                             if value.translation.height > 50 {
-                                                listHeight = 60 // minimized
+                                                listHeight = 60
                                             } else if value.translation.height < -50 {
-                                                listHeight = 350 // expanded
-                                            }
+                                                listHeight = 350                                             }
                                         }
                                     }
                             )
