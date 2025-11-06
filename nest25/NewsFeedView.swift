@@ -97,13 +97,11 @@ struct NewsFeedView: View {
         }
         
         group.notify(queue: .main) {
-            // Shuffle articles for diversity
             self.articles = allFetchedArticles.shuffled()
         }
     }
 }
 
-// Basic TopicSettingsView - you can customize this based on your available topics
 struct TopicSettingsView: View {
     @Binding var selectedTopics: String
     let onSave: () -> Void
@@ -161,15 +159,12 @@ struct ArticleCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Top section with icon and title
             HStack(alignment: .top, spacing: 12) {
-                // Category icon - reduced padding/frame
                 Image(systemName: categoryIcon(for: article.category))
                     .font(.system(size: 36, weight: .medium))
                     .foregroundColor(Color(red: 0.3, green: 0.6, blue: 0.9))
                     .frame(width: 60, height: 60)
                 
-                // Title with dynamic font sizing
                 Text(article.title)
                     .font(.system(size: dynamicTitleFontSize(for: article.title), weight: .bold))
                     .foregroundColor(.primary)
@@ -181,16 +176,13 @@ struct ArticleCardView: View {
             .padding(.horizontal, 20)
             .padding(.top, 20)
             
-            // Bias and Category row
             HStack {
-                // Bias indicator - all blue now
                 Text(article.bias.capitalized)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.blue)
                 
                 Spacer()
                 
-                // Category label
                 Text(article.category.capitalized)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.secondary)
@@ -198,7 +190,6 @@ struct ArticleCardView: View {
             .padding(.horizontal, 20)
             .padding(.top, 12)
             
-            // Summary - limited to 3 lines
             Text(article.summary)
                 .font(.system(size: 16))
                 .foregroundColor(.secondary)
@@ -208,7 +199,6 @@ struct ArticleCardView: View {
                 .padding(.top, 12)
                 .frame(maxWidth: .infinity, alignment: .leading)
             
-            // Footer with Read More and Share
             HStack {
                 Link("Read More", destination: article.url)
                     .font(.system(size: 16, weight: .medium))

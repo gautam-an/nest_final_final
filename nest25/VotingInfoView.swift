@@ -13,7 +13,6 @@ struct VotingInfoView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Voting Info Section
                     VStack(alignment: .leading, spacing: 15) {
                         Text("Voting Information")
                             .font(.title2)
@@ -38,14 +37,12 @@ struct VotingInfoView: View {
                     Divider()
                         .padding(.horizontal)
 
-                    // Settings Section
                     VStack(alignment: .leading, spacing: 15) {
                         Text("Settings")
                             .font(.title2)
                             .fontWeight(.bold)
                             .padding(.horizontal)
 
-                        // Terms & Privacy
                         Button {
                             showPrivacy = true
                         } label: {
@@ -56,7 +53,6 @@ struct VotingInfoView: View {
                         }
                         .padding(.horizontal)
 
-                        // Community Guidelines
                         Button {
                             showGuidelines = true
                         } label: {
@@ -67,7 +63,6 @@ struct VotingInfoView: View {
                         }
                         .padding(.horizontal)
 
-                        // About Elect Connect
                         Button {
                             showAbout = true
                         } label: {

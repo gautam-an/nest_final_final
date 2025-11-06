@@ -4,7 +4,6 @@ import MapKit
 import WebKit
 import MessageUI
 
-// MARK: - Data Cache Manager
 class DataCache {
     private func getCacheUrl(for coordinate: CLLocationCoordinate2D) -> URL? {
         guard let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return nil }
@@ -43,7 +42,6 @@ class DataCache {
     }
 }
 
-// MARK: - Location Storage
 class LocationStorage: ObservableObject {
     @AppStorage("savedLatitude") private var latitude: Double = 0
     @AppStorage("savedLongitude") private var longitude: Double = 0
@@ -62,7 +60,6 @@ class LocationStorage: ObservableObject {
     }
 }
 
-// MARK: - Location Manager
 class LocationManager2: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     @Published var location: CLLocation?
@@ -95,7 +92,6 @@ class LocationManager2: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 }
 
-// MARK: - Models
 struct LegislatorResponse: Codable { let results: [Legislator] }
 
 struct Legislator: Identifiable, Codable {
@@ -138,14 +134,12 @@ struct Role: Codable {
     }
 }
 
-// MARK: - Asked Question Model
 struct AskedQuestion: Identifiable {
     let id: String, candidate: String, candidateEmail: String, requester: String, subject: String, question: String, answer: String, timestamp: String
     
     var isAnswered: Bool { !answer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 }
 
-// MARK: - Fetcher
 class LegislatorFetcher: ObservableObject {
     @Published var legislators: [Legislator] = []
     private let cache = DataCache()
@@ -175,7 +169,6 @@ class LegislatorFetcher: ObservableObject {
     }
 }
 
-// MARK: - Question Fetcher
 class QuestionFetcher: ObservableObject {
     @Published var questions: [AskedQuestion] = []
     private let csvUrl = URL(string: "https://docs.google.com/spreadsheets/d/1SxwTKCm8lGS8a0AgiZrJxEHDFpORvw7Dsd05mWr1qAo/export?format=csv&gid=2110081341")!
@@ -230,11 +223,10 @@ class QuestionFetcher: ObservableObject {
     }
 }
 
-// MARK: - Location Picker View
 struct LocationPickerView: View {
     @Environment(\.dismiss) var dismiss
     @State private var region: MKCoordinateRegion
-    @State private var cameraPosition: MapCameraPosition // New state for the map
+    @State private var cameraPosition: MapCameraPosition
     var onLocationSave: (CLLocationCoordinate2D) -> Void
     
     init(onLocationSave: @escaping (CLLocationCoordinate2D) -> Void) {
@@ -243,21 +235,18 @@ struct LocationPickerView: View {
             center: CLLocationCoordinate2D(latitude: 38.8899, longitude: -77.0091),
             span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
         )
-        // Set the initial values for both state variables
         _region = State(initialValue: initialRegion)
         _cameraPosition = State(initialValue: .region(initialRegion))
     }
     
     var body: some View {
         ZStack {
-            // Use the new Map initializer and keep the `region` state in sync
             Map(position: $cameraPosition)
                 .onMapCameraChange { context in
                     self.region = context.region
                 }
                 .ignoresSafeArea()
             
-            // Center pin (No changes needed here)
             VStack {
                 Image(systemName: "mappin.circle.fill")
                     .font(.system(size: 40))
@@ -271,7 +260,6 @@ struct LocationPickerView: View {
                     .offset(y: -10)
             }
             
-            // Bottom card view (No changes needed here as it reads from `region`)
             VStack {
                 Spacer()
                 
@@ -320,7 +308,6 @@ struct LocationPickerView: View {
     }
 }
 
-// MARK: - Mail Helper
 struct MailView: UIViewControllerRepresentable {
     @Environment(\.dismiss) var dismiss
     let recipient: String, subject: String, body: String
@@ -351,7 +338,6 @@ struct MailView: UIViewControllerRepresentable {
     }
 }
 
-// MARK: - Question Row View
 struct QuestionView: View {
     let question: AskedQuestion
     @State private var isExpanded = false
@@ -430,7 +416,6 @@ struct QuestionView: View {
     }
 }
 
-// MARK: - Contact View
 struct ContactView: View {
     let legislatorName: String, recipientEmail: String
     @State private var subject: String = ""
@@ -463,7 +448,6 @@ struct ContactView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Header
                 VStack(spacing: 8) {
                     Text("Contact \(legislatorName)")
                         .font(.title2)
@@ -475,7 +459,6 @@ struct ContactView: View {
                 }
                 .padding(.top)
                 
-                // Previous Questions Section
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Label("Previously Asked Questions", systemImage: "text.bubble.fill")
@@ -538,7 +521,6 @@ struct ContactView: View {
                 }
                 .padding(.horizontal)
                 
-                // New Question Form
                 if showNewQuestionForm {
                     VStack(alignment: .leading, spacing: 20) {
                         HStack {
@@ -664,7 +646,6 @@ struct ContactView: View {
     }
 }
 
-// MARK: - Interactive WebView
 struct InteractiveWebView: UIViewRepresentable {
     let url: URL
     @Binding var triggerScraping: Bool
@@ -735,14 +716,12 @@ struct InteractiveWebView: UIViewRepresentable {
         }
 }
 
-// MARK: - Scrape Result Data Structure
 struct ScrapeResult: Identifiable {
     let id = UUID()
     let email: String?
     let contactUrl: String?
 }
 
-// MARK: - Email Storage Class
 class EmailStorage {
     static let shared = EmailStorage()
     private var emailCache: [String: String] = [:]
@@ -759,7 +738,6 @@ class EmailStorage {
     }
 }
 
-// MARK: - Legislator Detail View
 struct LegislatorDetailView: View {
     let legislator: Legislator
     @State private var triggerScraping = false
@@ -904,7 +882,6 @@ struct LegislatorDetailView: View {
     }
 }
 
-// MARK: - Main Grid View
 struct LegislatorsGridView: View {
     @StateObject private var fetcher = LegislatorFetcher()
     @StateObject private var locationManager = LocationManager2()
@@ -1191,7 +1168,6 @@ struct LegislatorsGridView: View {
     }
 }
 
-// MARK: - App Entry Point
 struct ElectConnectApp: App {
     var body: some Scene {
         WindowGroup {

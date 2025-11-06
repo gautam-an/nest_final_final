@@ -15,11 +15,10 @@ struct ContentView: View {
                     .zIndex(1)
                     .transition(.asymmetric(
                         insertion: .identity,
-                        removal: .opacity  // Remove the .scale part
+                        removal: .opacity
                     ))
             }
             
-            // Main content with smooth transitions
             Group {
                 if !isOnboarded {
                     OnboardingView(isOnboarded: $isOnboarded)
@@ -59,7 +58,6 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Prepare the content behind the splash
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 withAnimation(.easeOut(duration: 0.3)) {
                     contentScale = 0.95
