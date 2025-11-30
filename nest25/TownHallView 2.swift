@@ -2,8 +2,8 @@ import SwiftUI
 import WebKit
 
 struct TownHallView: View {
-    @State private var transcribedText: String = "It will create 500,000 jobs"
-    @State private var claimResult: String = "False, there is evidence that this project will only create 20,000 jobs, and the carbon emissions will be great"
+    @State private var transcribedText: String = ""
+    @State private var claimResult: String = ""
     @State private var messageText: String = ""
     private let fetchInterval: TimeInterval = 5.0
     private let serverURL = URL(string: "http://192.168.0.135:5020/text")!
@@ -11,7 +11,7 @@ struct TownHallView: View {
 
     var body: some View {
         VStack {
-            WebView(url: URL(string: "http://192.168.0.135:5010")!)
+            WebView(url: URL(string: "http://192.168.1.47:8000/")!)
                 .edgesIgnoringSafeArea(.all)
             Text(transcribedText)
                 .padding()
