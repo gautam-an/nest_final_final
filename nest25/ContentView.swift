@@ -1,5 +1,17 @@
 import SwiftUI
 
+
+struct HapticButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onChange(of: configuration.isPressed) { _, pressed in
+                if pressed {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+    }
+}
+
 struct ContentView: View {
     @AppStorage("isOnboarded") private var isOnboarded: Bool = false
     @AppStorage("isLoggedIn") private var isLoggedIn: Bool = false

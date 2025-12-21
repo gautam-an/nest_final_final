@@ -453,9 +453,20 @@ struct ContactView: View {
                         .font(.title2)
                         .fontWeight(.bold)
                     
-                    Text(recipientEmail)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 6) {
+                        Text(recipientEmail)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        Button(action: {
+                            UIPasteboard.general.string = recipientEmail
+                        }) {
+                            Image(systemName: "doc.on.doc")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 .padding(.top)
                 

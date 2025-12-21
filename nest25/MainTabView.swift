@@ -24,13 +24,22 @@ struct MainTabView: View {
             .tag(1)
             
             NavigationView {
+                CongressView()
+            }
+            .navigationViewStyle(.stack)
+            .tabItem {
+                Label("Congress", systemImage: "building.columns")
+            }
+            .tag(2)
+            
+            NavigationView {
                 VotingInfoView()
             }
             .navigationViewStyle(.stack)
             .tabItem {
                 Label("Voting", systemImage: "info.circle.fill")
             }
-            .tag(2)
+            .tag(3)
         }
         .accentColor(Color("PrimaryBlue"))
     }
