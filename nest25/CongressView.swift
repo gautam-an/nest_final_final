@@ -1,39 +1,18 @@
 import SwiftUI
 
-// MARK: - Helper Functions
-
-func formatISODate(_ iso: String?) -> String? {
-    guard let iso, !iso.isEmpty else { return nil }
-    
-    let isoFormatter = ISO8601DateFormatter()
-    isoFormatter.formatOptions = [.withInternetDateTime]
-    
-    let simpleFormatter = DateFormatter()
-    simpleFormatter.dateFormat = "yyyy-MM-dd"
-    
-    let out = DateFormatter()
-    out.dateStyle = .medium
-    
-    // Try standard ISO first
-    if let date = isoFormatter.date(from: iso) {
-        return out.string(from: date)
-    }
-    // Try simple YYYY-MM-DD
-    else if let date = simpleFormatter.date(from: iso) {
-        return out.string(from: date)
-    }
-    
-    // Fallback: Just strip the ugly timestamp if parsing fails
-    return iso.replacingOccurrences(of: "T00:00:00Z", with: "")
-}
-
-// MARK: - API Models
+// MARK: - Models
 
 struct CongressResponse<T: Codable>: Codable {
-    let bills: [Bill]?
-    let treaties: [Treaty]?
-    let members: [Member]?
+    let bills: [BillListRaw]?
+    let treaties: [TreatyListRaw]?
+    let members: [MemberListRaw]?
     let pagination: Pagination?
+    
+    // Wrappers for detail responses
+    let bill: BillDetail?
+    let treaty: TreatyDetail?
+    let member: MemberDetail?
+    let sponsoredLegislation: [SponsoredBillRaw]?
 }
 
 struct Pagination: Codable {
@@ -41,7 +20,9 @@ struct Pagination: Codable {
     let next: String?
 }
 
-struct Bill: Codable, Identifiable, Hashable {
+// -- List Models --
+
+struct BillListRaw: Codable, Identifiable, Hashable {
     let congress: Int?
     let type: String?
     let originChamber: String?
@@ -50,46 +31,20 @@ struct Bill: Codable, Identifiable, Hashable {
     let updateDate: String?
     let latestAction: Action?
     
-    // Unique ID combining fundamental properties + update date to catch changes
-    var id: String {
-        return "\(congress ?? 0)-\(type ?? "")-\(number ?? "")-\(updateDate ?? "")"
-    }
-    
-    var formattedTitle: String {
-        title ?? "Untitled Bill"
-    }
-    
-    var formattedType: String {
-        type?.uppercased() ?? "BILL"
-    }
+    var id: String { "\(congress ?? 0)-\(type ?? "")-\(number ?? "")" }
 }
 
-struct Action: Codable, Hashable {
-    let actionDate: String?
-    let text: String?
-}
-
-struct Treaty: Codable, Identifiable, Hashable {
+struct TreatyListRaw: Codable, Identifiable, Hashable {
     let number: Int?
     let suffix: String?
     let congressReceived: Int?
     let topic: String?
     let transmittedDate: String?
     
-    var id: String {
-        return "\(congressReceived ?? 0)-\(number ?? 0)-\(suffix ?? "")-\(transmittedDate ?? "")"
-    }
-    
-    var displayTitle: String {
-        let num = number ?? 0
-        if let s = suffix, !s.isEmpty {
-            return "Treaty \(num)-\(s)"
-        }
-        return "Treaty \(num)"
-    }
+    var id: String { "\(congressReceived ?? 0)-\(number ?? 0)-\(suffix ?? "")" }
 }
 
-struct Member: Codable, Identifiable, Hashable {
+struct MemberListRaw: Codable, Identifiable, Hashable {
     let bioguideId: String
     let name: String?
     let state: String?
@@ -99,46 +54,178 @@ struct Member: Codable, Identifiable, Hashable {
     let terms: MemberTerms?
     
     var id: String { bioguideId }
+}
+
+struct SponsoredBillRaw: Codable, Identifiable, Hashable {
+    let congress: Int?
+    let type: String?
+    let number: String?
+    let title: String?
+    let latestAction: Action?
     
-    struct Depiction: Codable, Hashable {
-        let imageUrl: String?
-        let attribution: String?
+    var id: String { "\(congress ?? 0)-\(type ?? "")-\(number ?? "")" }
+}
+
+// -- Detail Models --
+
+struct BillDetail: Codable {
+    let congress: Int?
+    let type: String?
+    let number: String?
+    let title: String?
+    let originChamber: String?
+    let introducedDate: String?
+    let updateDate: String?
+    let policyArea: PolicyArea?
+    let sponsors: [Sponsor]?
+    let latestAction: Action?
+    let summaries: [SummaryWrapper]?
+    let committees: CommitteesWrapper?
+    let actions: ActionsWrapper?
+    
+    struct PolicyArea: Codable {
+        let name: String?
     }
     
-    struct MemberTerms: Codable, Hashable {
-        let item: [Term]?
+    struct Sponsor: Codable, Hashable {
+        let bioguideId: String?
+        let fullName: String?
+        let state: String?
+        let party: String?
     }
     
-    struct Term: Codable, Hashable {
-        let chamber: String?
-        let startYear: Int?
-        let endYear: Int?
+    struct SummaryWrapper: Codable {
+        let text: String?
+    }
+    
+    struct CommitteesWrapper: Codable {
+        let count: Int?
+        let url: String?
+    }
+    
+    struct ActionsWrapper: Codable {
+        let count: Int?
+        let url: String?
     }
 }
 
-// MARK: - View Model
+struct TreatyDetail: Codable {
+    let number: Int?
+    let suffix: String?
+    let congressReceived: Int?
+    let topic: String?
+    let transmittedDate: String?
+    let inForceDate: String?
+    let countriesParties: [CountryParty]?
+    let indexTerms: [IndexTerm]?
+    
+    struct CountryParty: Codable, Hashable {
+        let name: String?
+    }
+    
+    struct IndexTerm: Codable, Hashable {
+        let name: String?
+    }
+}
+
+struct MemberDetail: Codable {
+    let bioguideId: String
+    let name: String? // usually directOrderName or similar in detail
+    let birthYear: String?
+    let directOrderName: String?
+    let partyHistory: [PartyHistoryItem]?
+    let depiction: Depiction?
+    
+    struct PartyHistoryItem: Codable, Hashable {
+        let partyName: String?
+        let startYear: Int?
+    }
+}
+
+// -- Shared Sub-Models --
+
+struct Action: Codable, Hashable {
+    let actionDate: String?
+    let text: String?
+}
+
+struct Depiction: Codable, Hashable {
+    let imageUrl: String?
+    let attribution: String?
+}
+
+struct MemberTerms: Codable, Hashable {
+    let item: [Term]?
+}
+
+struct Term: Codable, Hashable {
+    let chamber: String?
+    let startYear: Int?
+    let endYear: Int?
+}
+
+// MARK: - Navigation
+
+enum CongressRoute: Hashable {
+    case billDetail(congress: Int, type: String, number: String)
+    case treatyDetail(congress: Int, number: Int, suffix: String?)
+    case memberDetail(bioguideId: String)
+}
+
+// MARK: - API Manager
+
+class APIManager {
+    static let shared = APIManager()
+    private let apiKey = "c3yejfiNvHRNh8eu5uT4JzUQmqEbBLh0wPXV2NWT"
+    private let baseURL = "https://api.congress.gov/v3"
+    
+    func fetch<T: Decodable>(endpoint: String, params: [String: String] = [:]) async throws -> T {
+        var urlComp = URLComponents(string: baseURL + endpoint)!
+        var queryItems = [URLQueryItem(name: "api_key", value: apiKey), URLQueryItem(name: "format", value: "json")]
+        for (key, value) in params {
+            queryItems.append(URLQueryItem(name: key, value: value))
+        }
+        urlComp.queryItems = queryItems
+        
+        guard let url = urlComp.url else { throw URLError(.badURL) }
+        
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        
+        do {
+            return try JSONDecoder().decode(T.self, from: data)
+        } catch {
+            print("Decoding error for \(endpoint): \(error)")
+            throw error
+        }
+    }
+}
+
+// MARK: - View Models
 
 @MainActor
-class CongressViewModel: ObservableObject {
-    @Published var selectedTab: CongressTab = .bills
-    @Published var bills: [Bill] = []
-    @Published var treaties: [Treaty] = []
-    @Published var members: [Member] = []
+class CongressListViewModel: ObservableObject {
+    @Published var bills: [BillListRaw] = []
+    @Published var treaties: [TreatyListRaw] = []
+    @Published var members: [MemberListRaw] = []
     
-    // Filters
-    @Published var selectedCongress: Int = 118
-    @Published var selectedBillType: String = "" // Empty = All
-    @Published var selectedState: String = "" // Empty = All
-    
+    @Published var selectedTab: Tab = .bills
     @Published var isLoading = false
     @Published var errorMessage: String?
     
-    private let apiKey = "c3yejfiNvHRNh8eu5uT4JzUQmqEbBLh0wPXV2NWT"
+    // Filters
+    @Published var selectedCongress: Int = 118
+    @Published var selectedBillType: String = ""
+    @Published var selectedState: String = ""
+    
     private var offset = 0
     private let limit = 20
     private var canLoadMore = true
     
-    enum CongressTab: String, CaseIterable {
+    enum Tab: String, CaseIterable {
         case bills = "Bills"
         case treaties = "Treaties"
         case members = "Members"
@@ -161,161 +248,110 @@ class CongressViewModel: ObservableObject {
     
     private func loadData() async {
         isLoading = true
-        if offset == 0 { errorMessage = nil }
-        
         do {
-            let urlString = buildURL()
-            guard let url = URL(string: urlString) else { throw URLError(.badURL) }
-            
-            var request = URLRequest(url: url)
-            let (data, response) = try await URLSession.shared.data(for: request)
-            
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                throw URLError(.badServerResponse)
-            }
-            
-            // Decode based on tab
+            let endpoint: String
             switch selectedTab {
             case .bills:
-                let result = try JSONDecoder().decode(CongressResponse<Bill>.self, from: data)
-                if let newBills = result.bills {
-                    // Filter duplicates before appending
-                    let uniqueBills = newBills.filter { newBill in
-                        !self.bills.contains(where: { $0.id == newBill.id })
-                    }
-                    self.bills.append(contentsOf: uniqueBills)
-                    self.canLoadMore = newBills.count >= limit
-                } else {
-                    self.canLoadMore = false
-                }
-                
+                endpoint = "/bill/\(selectedCongress)" + (selectedBillType.isEmpty ? "" : "/\(selectedBillType)")
             case .treaties:
-                let result = try JSONDecoder().decode(CongressResponse<Treaty>.self, from: data)
-                if let newTreaties = result.treaties {
-                    let uniqueTreaties = newTreaties.filter { newTreaty in
-                        !self.treaties.contains(where: { $0.id == newTreaty.id })
-                    }
-                    self.treaties.append(contentsOf: uniqueTreaties)
-                    self.canLoadMore = newTreaties.count >= limit
-                } else {
-                    self.canLoadMore = false
-                }
-                
+                endpoint = "/treaty/\(selectedCongress)"
             case .members:
-                let result = try JSONDecoder().decode(CongressResponse<Member>.self, from: data)
-                if let newMembers = result.members {
-                    let uniqueMembers = newMembers.filter { newMember in
-                        !self.members.contains(where: { $0.id == newMember.id })
-                    }
-                    self.members.append(contentsOf: uniqueMembers)
-                    self.canLoadMore = newMembers.count >= limit
-                } else {
-                    self.canLoadMore = false
-                }
+                endpoint = selectedState.isEmpty ? "/member" : "/member/\(selectedState)"
             }
             
+            let params = ["offset": "\(offset)", "limit": "\(limit)"]
+            
+            switch selectedTab {
+            case .bills:
+                let res: CongressResponse<BillListRaw> = try await APIManager.shared.fetch(endpoint: endpoint, params: params)
+                if let items = res.bills {
+                    let unique = items.filter { n in !bills.contains(where: { $0.id == n.id }) }
+                    bills.append(contentsOf: unique)
+                    canLoadMore = items.count >= limit
+                } else { canLoadMore = false }
+                
+            case .treaties:
+                let res: CongressResponse<TreatyListRaw> = try await APIManager.shared.fetch(endpoint: endpoint, params: params)
+                if let items = res.treaties {
+                    let unique = items.filter { n in !treaties.contains(where: { $0.id == n.id }) }
+                    treaties.append(contentsOf: unique)
+                    canLoadMore = items.count >= limit
+                } else { canLoadMore = false }
+                
+            case .members:
+                // For members list, usually want current members unless filtered by congress
+                // If using /member, we might want currentMember=true if no other filter
+                var memParams = params
+                if selectedState.isEmpty { memParams["currentMember"] = "true" }
+                
+                let res: CongressResponse<MemberListRaw> = try await APIManager.shared.fetch(endpoint: endpoint, params: memParams)
+                if let items = res.members {
+                    let unique = items.filter { n in !members.contains(where: { $0.id == n.id }) }
+                    members.append(contentsOf: unique)
+                    canLoadMore = items.count >= limit
+                } else { canLoadMore = false }
+            }
             offset += limit
             
         } catch {
-            print("Decoding Error: \(error)")
-            self.errorMessage = "Failed to load: \(error.localizedDescription)"
+            errorMessage = error.localizedDescription
         }
-        
         isLoading = false
-    }
-    
-    private func buildURL() -> String {
-        let baseURL = "https://api.congress.gov/v3"
-        var endpoint = ""
-        
-        switch selectedTab {
-        case .bills:
-            endpoint = "/bill/\(selectedCongress)"
-            if !selectedBillType.isEmpty { endpoint += "/\(selectedBillType)" }
-        case .treaties:
-            endpoint = "/treaty/\(selectedCongress)"
-        case .members:
-            if !selectedState.isEmpty {
-                endpoint = "/member/\(selectedState)"
-            } else {
-                endpoint = "/member"
-            }
-        }
-        
-        return "\(baseURL)\(endpoint)?api_key=\(apiKey)&format=json&offset=\(offset)&limit=\(limit)"
     }
 }
 
-// MARK: - Main View
+// MARK: - Main Views
 
 struct CongressView: View {
-    @StateObject private var viewModel = CongressViewModel()
+    @StateObject private var vm = CongressListViewModel()
     @State private var showFilters = false
+    @State private var navPath = NavigationPath()
     
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navPath) {
             VStack(spacing: 0) {
-                // Tab Picker
-                Picker("Category", selection: $viewModel.selectedTab) {
-                    ForEach(CongressViewModel.CongressTab.allCases, id: \.self) { tab in
+                Picker("Category", selection: $vm.selectedTab) {
+                    ForEach(CongressListViewModel.Tab.allCases, id: \.self) { tab in
                         Text(tab.rawValue).tag(tab)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding()
-                .onChange(of: viewModel.selectedTab) { _, _ in viewModel.resetAndLoad() }
+                .onChange(of: vm.selectedTab) { _, _ in vm.resetAndLoad() }
                 
-                // Content List
                 List {
-                    switch viewModel.selectedTab {
+                    switch vm.selectedTab {
                     case .bills:
-                        ForEach(viewModel.bills) { bill in
-                            NavigationLink(value: bill) {
-                                BillRow(bill: bill)
+                        ForEach(vm.bills) { bill in
+                            NavigationLink(value: CongressRoute.billDetail(congress: bill.congress ?? 118, type: bill.type ?? "hr", number: bill.number ?? "1")) {
+                                BillListRow(bill: bill)
                             }
                         }
                     case .treaties:
-                        ForEach(viewModel.treaties) { treaty in
-                            TreatyRow(treaty: treaty)
+                        ForEach(vm.treaties) { treaty in
+                            NavigationLink(value: CongressRoute.treatyDetail(congress: treaty.congressReceived ?? 118, number: treaty.number ?? 0, suffix: treaty.suffix)) {
+                                TreatyListRow(treaty: treaty)
+                            }
                         }
                     case .members:
-                        ForEach(viewModel.members) { member in
-                            MemberRow(member: member)
+                        ForEach(vm.members) { member in
+                            NavigationLink(value: CongressRoute.memberDetail(bioguideId: member.bioguideId)) {
+                                MemberListRow(member: member)
+                            }
                         }
                     }
                     
-                    // Loading / Error / Infinite Scroll
-                    if viewModel.isLoading {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
-                        }
-                        .listRowSeparator(.hidden)
-                    } else if let error = viewModel.errorMessage {
-                        VStack(alignment: .leading) {
-                            Text("Error")
-                                .font(.headline)
-                                .foregroundColor(.red)
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .listRowSeparator(.hidden)
+                    if vm.isLoading {
+                        HStack { Spacer(); ProgressView(); Spacer() }
                     } else {
-                        Color.clear
-                            .frame(height: 1)
-                            .onAppear {
-                                viewModel.loadMore()
-                            }
+                        Color.clear.onAppear { vm.loadMore() }
                     }
                 }
                 .listStyle(.plain)
-                .refreshable {
-                    viewModel.resetAndLoad()
-                }
+                .refreshable { vm.resetAndLoad() }
             }
-            .navigationTitle("Congress Data")
+            .navigationTitle(vm.selectedTab.rawValue)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { showFilters.toggle() }) {
@@ -324,169 +360,119 @@ struct CongressView: View {
                 }
             }
             .sheet(isPresented: $showFilters) {
-                FilterView(viewModel: viewModel)
+                FilterView(vm: vm)
             }
-            .navigationDestination(for: Bill.self) { bill in
-                BillDetailView(bill: bill)
+            .navigationDestination(for: CongressRoute.self) { route in
+                switch route {
+                case .billDetail(let c, let t, let n):
+                    BillDetailView(congress: c, type: t, number: n)
+                case .treatyDetail(let c, let n, let s):
+                    TreatyDetailView(congress: c, number: n, suffix: s)
+                case .memberDetail(let id):
+                    MemberDetailView(bioguideId: id)
+                }
             }
             .onAppear {
-                if viewModel.bills.isEmpty && viewModel.members.isEmpty && viewModel.treaties.isEmpty {
-                    viewModel.resetAndLoad()
+                if vm.bills.isEmpty && vm.members.isEmpty && vm.treaties.isEmpty {
+                    vm.resetAndLoad()
                 }
             }
         }
     }
 }
 
-// MARK: - Subviews
+// MARK: - Row Views
 
-struct BillRow: View {
-    let bill: Bill
+struct BillListRow: View {
+    let bill: BillListRaw
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(bill.formattedTitle)
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(bill.title ?? "Untitled")
+                .font(.subheadline)
+                .fontWeight(.medium)
                 .lineLimit(2)
             
             HStack {
-                Text("\(bill.formattedType) \(bill.number ?? "")")
-                    .font(.caption)
+                Text(bill.type?.uppercased() ?? "BILL")
+                    .font(.caption2)
                     .fontWeight(.bold)
                     .padding(4)
                     .background(Color.blue.opacity(0.1))
                     .cornerRadius(4)
                 
-                Text("• \(bill.congress ?? 0)th Congress")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            if let action = bill.latestAction?.text {
-                Text(action)
+                Text(bill.number ?? "")
                     .font(.caption2)
-                    .foregroundColor(.gray)
-                    .lineLimit(2)
+                    .fontWeight(.bold)
+                
+                Spacer()
+                
+                if let date = formatISODate(bill.latestAction?.actionDate ?? bill.updateDate) {
+                    Text(date)
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
             }
         }
         .padding(.vertical, 4)
     }
 }
 
-struct TreatyRow: View {
-    let treaty: Treaty
+struct TreatyListRow: View {
+    let treaty: TreatyListRaw
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(treaty.topic ?? "Unknown Treaty")
-                .font(.headline)
+                .font(.subheadline)
+                .fontWeight(.medium)
                 .lineLimit(2)
             
             HStack {
-                Text(treaty.displayTitle)
-                    .font(.caption)
+                Text("Treaty \(treaty.number ?? 0)\(treaty.suffix ?? "")")
+                    .font(.caption2)
                     .fontWeight(.bold)
                     .padding(4)
                     .background(Color.purple.opacity(0.1))
                     .cornerRadius(4)
                 
-                // Cleaned up: Removed "Received:" text
-                Text("• \(treaty.congressReceived ?? 0)th Congress")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            // Cleaned up: Removed "Transmitted:" label, just showing nice date
-            if let date = formatISODate(treaty.transmittedDate) {
-                Text(date)
-                    .font(.caption2)
-                    .foregroundColor(.gray)
+                Spacer()
+                
+                if let date = formatISODate(treaty.transmittedDate) {
+                    Text(date)
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                }
             }
         }
         .padding(.vertical, 4)
     }
 }
 
-struct MemberRow: View {
-    let member: Member
+struct MemberListRow: View {
+    let member: MemberListRaw
     
     var body: some View {
         HStack(spacing: 12) {
             if let urlString = member.depiction?.imageUrl, let url = URL(string: urlString) {
-                AsyncImage(url: url) { image in
-                    image.resizable().aspectRatio(contentMode: .fill)
+                AsyncImage(url: url) { img in
+                    img.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Color.gray.opacity(0.3)
                 }
-                .frame(width: 50, height: 50)
+                .frame(width: 44, height: 44)
                 .clipShape(Circle())
             } else {
-                Circle()
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(width: 50, height: 50)
-                    .overlay(Text(String(member.name?.prefix(1) ?? "?")))
+                Circle().fill(Color.gray.opacity(0.2)).frame(width: 44, height: 44)
             }
             
             VStack(alignment: .leading) {
                 Text(member.name ?? "Unknown")
-                    .font(.headline)
-                
-                Text("\(member.partyName ?? "N/A") • \(member.state ?? "")")
-                    .font(.subheadline)
+                    .font(.body)
+                    .fontWeight(.medium)
+                Text("\(member.partyName ?? "") • \(member.state ?? "")")
+                    .font(.caption)
                     .foregroundColor(.secondary)
-            }
-        }
-    }
-}
-
-struct FilterView: View {
-    @ObservedObject var viewModel: CongressViewModel
-    @Environment(\.dismiss) var dismiss
-    
-    let states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                if viewModel.selectedTab == .bills || viewModel.selectedTab == .treaties {
-                    Section(header: Text("Congress")) {
-                        Picker("Congress Session", selection: $viewModel.selectedCongress) {
-                            ForEach((100...118).reversed(), id: \.self) { i in
-                                Text("\(i)th Congress").tag(i)
-                            }
-                        }
-                    }
-                }
-                
-                if viewModel.selectedTab == .bills {
-                    Section(header: Text("Bill Type")) {
-                        Picker("Type", selection: $viewModel.selectedBillType) {
-                            Text("All").tag("")
-                            Text("HR").tag("hr")
-                            Text("S").tag("s")
-                            Text("H.Res").tag("hres")
-                            Text("S.Res").tag("sres")
-                        }
-                    }
-                }
-                
-                if viewModel.selectedTab == .members {
-                    Section(header: Text("Location")) {
-                        Picker("State", selection: $viewModel.selectedState) {
-                            Text("All").tag("")
-                            ForEach(states, id: \.self) { state in
-                                Text(state).tag(state)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Filters")
-            .toolbar {
-                Button("Done") {
-                    viewModel.resetAndLoad()
-                    dismiss()
-                }
             }
         }
     }
@@ -495,52 +481,82 @@ struct FilterView: View {
 // MARK: - Detail Views
 
 struct BillDetailView: View {
-    let bill: Bill
-    @State private var fullBillURL: URL?
+    let congress: Int
+    let type: String
+    let number: String
+    
+    @State private var detail: BillDetail?
+    @State private var loading = true
     
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                
-                // Header
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(bill.formattedTitle)
-                        .font(.title2)
-                        .fontWeight(.bold)
+            if loading {
+                ProgressView().padding(.top, 50)
+            } else if let detail = detail {
+                VStack(alignment: .leading, spacing: 16) {
                     
-                    HStack {
-                        Badge(text: "\(bill.formattedType) \(bill.number ?? "")", color: .blue)
-                        Badge(text: "\(bill.congress ?? 0)th Congress", color: .gray)
-                        if let chamber = bill.originChamber {
-                            Badge(text: chamber, color: .orange)
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(detail.title ?? "Untitled")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                        
+                        HStack {
+                            Badge(text: "\(detail.type?.uppercased() ?? "") \(detail.number ?? "")", color: .blue)
+                            Badge(text: "\(detail.congress ?? 0)th Congress", color: .gray)
+                            if let chamber = detail.originChamber {
+                                Badge(text: chamber, color: .orange)
+                            }
                         }
                     }
-                }
-                
-                Divider()
-                
-                // Latest Action
-                if let action = bill.latestAction {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Label("Latest Action", systemImage: "clock")
-                            .font(.headline)
-                        
-                        Text(action.text ?? "No description")
-                            .padding()
-                            .background(Color.gray.opacity(0.1))
-                            .cornerRadius(8)
-                        
-                        if let date = formatISODate(action.actionDate) {
-                            Text(date)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    
+                    Divider()
+                    
+                    if let policy = detail.policyArea?.name {
+                        VStack(alignment: .leading) {
+                            Text("Policy Area").font(.caption).foregroundColor(.secondary)
+                            Text(policy).font(.body)
                         }
                     }
-                }
-                
-                // External Link
-                if let url = generateCongressURL() {
-                    Link(destination: url) {
+                    
+                    if let introduced = formatISODate(detail.introducedDate) {
+                        VStack(alignment: .leading) {
+                            Text("Introduced").font(.caption).foregroundColor(.secondary)
+                            Text(introduced).font(.body)
+                        }
+                    }
+                    
+                    if let latest = detail.latestAction {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Latest Action").font(.caption).foregroundColor(.secondary)
+                            Text(latest.text ?? "")
+                                .padding(8)
+                                .background(Color.gray.opacity(0.1))
+                                .cornerRadius(8)
+                            if let date = formatISODate(latest.actionDate) {
+                                Text(date).font(.caption2).foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    
+                    if let sponsors = detail.sponsors, !sponsors.isEmpty {
+                        VStack(alignment: .leading) {
+                            Text("Sponsor").font(.caption).foregroundColor(.secondary)
+                            ForEach(sponsors, id: \.self) { sponsor in
+                                NavigationLink(value: CongressRoute.memberDetail(bioguideId: sponsor.bioguideId ?? "")) {
+                                    HStack {
+                                        Text(sponsor.fullName ?? "Unknown")
+                                        Spacer()
+                                        Image(systemName: "chevron.right").font(.caption)
+                                    }
+                                    .padding(.vertical, 4)
+                                    .foregroundColor(.primary)
+                                }
+                            }
+                        }
+                    }
+                    
+                    Link(destination: generateCongressURL()) {
                         HStack {
                             Text("View on Congress.gov")
                             Image(systemName: "arrow.up.right")
@@ -552,36 +568,271 @@ struct BillDetailView: View {
                         .cornerRadius(10)
                     }
                 }
-                
-                Spacer()
+                .padding()
+            } else {
+                Text("Failed to load details").foregroundColor(.red).padding()
             }
-            .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            do {
+                let res: CongressResponse<BillDetail> = try await APIManager.shared.fetch(endpoint: "/bill/\(congress)/\(type.lowercased())/\(number)")
+                self.detail = res.bill
+            } catch {
+                print(error)
+            }
+            loading = false
+        }
     }
     
-    func generateCongressURL() -> URL? {
-        guard let congress = bill.congress, let type = bill.type, let number = bill.number else { return nil }
-        
+    func generateCongressURL() -> URL {
         var typeSlug = "bill"
         var chamber = "house"
-        
         switch type.lowercased() {
-        case "s": chamber = "senate"; typeSlug = "bill"
-        case "hr": chamber = "house"; typeSlug = "bill"
-        case "hres": chamber = "house"; typeSlug = "resolution"
-        case "sres": chamber = "senate"; typeSlug = "resolution"
-        default: break
+        case "s", "sres", "sjres", "sconres": chamber = "senate"
+        default: chamber = "house"
         }
         
-        return URL(string: "https://www.congress.gov/bill/\(congress)th-congress/\(chamber)-\(typeSlug)/\(number)")
+        // Simplified mapping for URL generation
+        if type.lowercased().contains("res") { typeSlug = "resolution" }
+        
+        return URL(string: "https://www.congress.gov/bill/\(congress)th-congress/\(chamber)-\(typeSlug)/\(number)")!
     }
 }
+
+struct TreatyDetailView: View {
+    let congress: Int
+    let number: Int
+    let suffix: String?
+    
+    @State private var detail: TreatyDetail?
+    @State private var loading = true
+    
+    var body: some View {
+        ScrollView {
+            if loading {
+                ProgressView().padding(.top, 50)
+            } else if let detail = detail {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(detail.topic ?? "Treaty")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    HStack {
+                        Badge(text: "Treaty \(detail.number ?? 0)\(detail.suffix ?? "")", color: .purple)
+                        Badge(text: "Received: \(detail.congressReceived ?? 0)th", color: .gray)
+                    }
+                    
+                    Divider()
+                    
+                    if let date = formatISODate(detail.transmittedDate) {
+                        VStack(alignment: .leading) {
+                            Text("Transmitted Date").font(.caption).foregroundColor(.secondary)
+                            Text(date).font(.body)
+                        }
+                    }
+                    
+                    if let parties = detail.countriesParties, !parties.isEmpty {
+                        VStack(alignment: .leading) {
+                            Text("Parties").font(.caption).foregroundColor(.secondary)
+                            Text(parties.compactMap { $0.name }.joined(separator: ", "))
+                        }
+                    }
+                    
+                    if let terms = detail.indexTerms, !terms.isEmpty {
+                        VStack(alignment: .leading) {
+                            Text("Index Terms").font(.caption).foregroundColor(.secondary)
+                            ForEach(terms, id: \.self) { term in
+                                Text("• " + (term.name ?? "")).font(.caption)
+                            }
+                        }
+                    }
+                    
+                    Link(destination: URL(string: "https://www.congress.gov/treaty-document/\(congress)th-congress/\(number)")!) {
+                        HStack {
+                            Text("View on Congress.gov")
+                            Image(systemName: "arrow.up.right")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                }
+                .padding()
+            }
+        }
+        .task {
+            do {
+                let s = suffix ?? ""
+                let endpoint = s.isEmpty ? "/treaty/\(congress)/\(number)" : "/treaty/\(congress)/\(number)/\(s)"
+                let res: CongressResponse<TreatyDetail> = try await APIManager.shared.fetch(endpoint: endpoint)
+                self.detail = res.treaty
+            } catch {
+                print(error)
+            }
+            loading = false
+        }
+    }
+}
+
+struct MemberDetailView: View {
+    let bioguideId: String
+    
+    @State private var detail: MemberDetail?
+    @State private var sponsored: [SponsoredBillRaw] = []
+    @State private var loading = true
+    
+    var body: some View {
+        ScrollView {
+            if loading {
+                ProgressView().padding(.top, 50)
+            } else if let member = detail {
+                VStack(alignment: .leading, spacing: 16) {
+                    
+                    HStack(spacing: 16) {
+                        if let urlString = member.depiction?.imageUrl, let url = URL(string: urlString) {
+                            AsyncImage(url: url) { img in
+                                img.resizable().aspectRatio(contentMode: .fill)
+                            } placeholder: { Color.gray.opacity(0.3) }
+                            .frame(width: 80, height: 80)
+                            .clipShape(Circle())
+                        }
+                        
+                        VStack(alignment: .leading) {
+                            Text(member.directOrderName ?? member.name ?? "Unknown")
+                                .font(.title3)
+                                .fontWeight(.bold)
+                            
+                            if let history = member.partyHistory?.last {
+                                Text(history.partyName ?? "")
+                                    .foregroundColor(.secondary)
+                            }
+                            Text("Bioguide: \(member.bioguideId)")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    Divider()
+                    
+                    Text("Sponsored Legislation")
+                        .font(.headline)
+                    
+                    if sponsored.isEmpty {
+                        Text("No recent sponsored legislation found.").font(.caption).foregroundColor(.gray)
+                    } else {
+                        ForEach(sponsored) { bill in
+                            NavigationLink(value: CongressRoute.billDetail(congress: bill.congress ?? 118, type: bill.type ?? "hr", number: bill.number ?? "1")) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(bill.title ?? "Untitled")
+                                        .font(.subheadline)
+                                        .multilineTextAlignment(.leading)
+                                        .lineLimit(2)
+                                        .foregroundColor(.primary)
+                                    
+                                    HStack {
+                                        Text("\(bill.type?.uppercased() ?? "") \(bill.number ?? "")")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .padding(2)
+                                            .background(Color.blue.opacity(0.1))
+                                            .cornerRadius(4)
+                                        Spacer()
+                                        if let date = formatISODate(bill.latestAction?.actionDate) {
+                                            Text(date).font(.caption2).foregroundColor(.gray)
+                                        }
+                                    }
+                                }
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 4)
+                                .background(Color.gray.opacity(0.05))
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                }
+                .padding()
+            }
+        }
+        .task {
+            do {
+                // Fetch Member Info
+                let res: CongressResponse<MemberDetail> = try await APIManager.shared.fetch(endpoint: "/member/\(bioguideId)")
+                self.detail = res.member
+                
+                // Fetch Sponsored
+                let sponsoredRes: CongressResponse<SponsoredBillRaw> = try await APIManager.shared.fetch(endpoint: "/member/\(bioguideId)/sponsored-legislation", params: ["limit": "10"])
+                self.sponsored = sponsoredRes.sponsoredLegislation ?? []
+            } catch {
+                print(error)
+            }
+            loading = false
+        }
+    }
+}
+
+// MARK: - Filter View
+
+struct FilterView: View {
+    @ObservedObject var vm: CongressListViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    let states = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY"]
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                if vm.selectedTab == .bills || vm.selectedTab == .treaties {
+                    Section(header: Text("Congress")) {
+                        Picker("Congress Session", selection: $vm.selectedCongress) {
+                            ForEach((100...118).reversed(), id: \.self) { i in
+                                Text("\(i)th Congress").tag(i)
+                            }
+                        }
+                    }
+                }
+                
+                if vm.selectedTab == .bills {
+                    Section(header: Text("Bill Type")) {
+                        Picker("Type", selection: $vm.selectedBillType) {
+                            Text("All").tag("")
+                            Text("HR").tag("hr")
+                            Text("S").tag("s")
+                            Text("H.Res").tag("hres")
+                            Text("S.Res").tag("sres")
+                        }
+                    }
+                }
+                
+                if vm.selectedTab == .members {
+                    Section(header: Text("Location")) {
+                        Picker("State", selection: $vm.selectedState) {
+                            Text("All").tag("")
+                            ForEach(states, id: \.self) { state in
+                                Text(state).tag(state)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Filters")
+            .toolbar {
+                Button("Done") {
+                    vm.resetAndLoad()
+                    dismiss()
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Helpers
 
 struct Badge: View {
     let text: String
     let color: Color
-    
     var body: some View {
         Text(text)
             .font(.caption)
@@ -592,4 +843,18 @@ struct Badge: View {
             .foregroundColor(color)
             .cornerRadius(4)
     }
+}
+
+func formatISODate(_ iso: String?) -> String? {
+    guard let iso, !iso.isEmpty else { return nil }
+    let isoFormatter = ISO8601DateFormatter()
+    isoFormatter.formatOptions = [.withInternetDateTime]
+    let simpleFormatter = DateFormatter()
+    simpleFormatter.dateFormat = "yyyy-MM-dd"
+    let out = DateFormatter()
+    out.dateStyle = .medium
+    
+    if let date = isoFormatter.date(from: iso) { return out.string(from: date) }
+    if let date = simpleFormatter.date(from: iso) { return out.string(from: date) }
+    return iso.replacingOccurrences(of: "T00:00:00Z", with: "")
 }

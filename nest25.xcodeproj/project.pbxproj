@@ -30,7 +30,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		200D7DE62E4BC78B007D0F71 /* Exceptions for "nest25" folder in "nest25" target */ = {
+		20B0EA9D2EF8F154003DBD46 /* Exceptions for "nest25" folder in "nest25" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -40,10 +40,10 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		20D3CC872DA228FB007A56A5 /* nest25 */ = {
+		20B0EA8F2EF8F154003DBD46 /* nest25 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				200D7DE62E4BC78B007D0F71 /* Exceptions for "nest25" folder in "nest25" target */,
+				20B0EA9D2EF8F154003DBD46 /* Exceptions for "nest25" folder in "nest25" target */,
 			);
 			path = nest25;
 			sourceTree = "<group>";
@@ -88,7 +88,7 @@
 		26E3EF322DA1DD110019EA11 = {
 			isa = PBXGroup;
 			children = (
-				20D3CC872DA228FB007A56A5 /* nest25 */,
+				20B0EA8F2EF8F154003DBD46 /* nest25 */,
 				26E3EF4E2DA1DD120019EA11 /* nest25Tests */,
 				26E3EF582DA1DD120019EA11 /* nest25UITests */,
 				26E3EF3C2DA1DD110019EA11 /* Products */,
@@ -121,7 +121,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				20D3CC872DA228FB007A56A5 /* nest25 */,
+				20B0EA8F2EF8F154003DBD46 /* nest25 */,
 			);
 			name = nest25;
 			packageProductDependencies = (
