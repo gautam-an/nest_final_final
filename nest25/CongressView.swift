@@ -3,16 +3,18 @@ import SwiftUI
 // MARK: - Models
 
 struct CongressResponse<T: Codable>: Codable {
+    // List containers
     let bills: [BillListRaw]?
     let treaties: [TreatyListRaw]?
     let members: [MemberListRaw]?
-    let pagination: Pagination?
     
-    // Wrappers for detail responses
+    // Detail containers
     let bill: BillDetail?
     let treaty: TreatyDetail?
     let member: MemberDetail?
     let sponsoredLegislation: [SponsoredBillRaw]?
+    
+    let pagination: Pagination?
 }
 
 struct Pagination: Codable {
@@ -32,6 +34,16 @@ struct BillListRaw: Codable, Identifiable, Hashable {
     let latestAction: Action?
     
     var id: String { "\(congress ?? 0)-\(type ?? "")-\(number ?? "")" }
+    
+    // FIX 1: Robust Display Title for Main List
+    var displayTitle: String {
+        // 1. Try official title
+        if let t = title, !t.isEmpty { return t }
+        // 2. Try the text of the latest action (e.g. "Introduced in House")
+        if let actionText = latestAction?.text, !actionText.isEmpty { return actionText }
+        // 3. Fallback to generic ID
+        return "Legislation \(type?.uppercased() ?? "") \(number ?? "")"
+    }
 }
 
 struct TreatyListRaw: Codable, Identifiable, Hashable {
@@ -64,6 +76,16 @@ struct SponsoredBillRaw: Codable, Identifiable, Hashable {
     let latestAction: Action?
     
     var id: String { "\(congress ?? 0)-\(type ?? "")-\(number ?? "")" }
+    
+    // FIX 2: Robust Display Title for Member Details (The specific bug fix)
+    var displayTitle: String {
+        // 1. Try official title
+        if let t = title, !t.isEmpty { return t }
+        // 2. Try the text of the latest action (e.g. "Introduced in House")
+        if let actionText = latestAction?.text, !actionText.isEmpty { return actionText }
+        // 3. Fallback to generic ID
+        return "Legislation \(type?.uppercased() ?? "") \(number ?? "")"
+    }
 }
 
 // -- Detail Models --
@@ -79,9 +101,13 @@ struct BillDetail: Codable {
     let policyArea: PolicyArea?
     let sponsors: [Sponsor]?
     let latestAction: Action?
-    let summaries: [SummaryWrapper]?
-    let committees: CommitteesWrapper?
-    let actions: ActionsWrapper?
+    
+    // FIX: These are Objects { count, url }, NOT Arrays in the detail view
+    let summaries: CountUrlWrapper?
+    let committees: CountUrlWrapper?
+    let actions: CountUrlWrapper?
+    let subjects: CountUrlWrapper?
+    let titles: CountUrlWrapper?
     
     struct PolicyArea: Codable {
         let name: String?
@@ -94,16 +120,7 @@ struct BillDetail: Codable {
         let party: String?
     }
     
-    struct SummaryWrapper: Codable {
-        let text: String?
-    }
-    
-    struct CommitteesWrapper: Codable {
-        let count: Int?
-        let url: String?
-    }
-    
-    struct ActionsWrapper: Codable {
+    struct CountUrlWrapper: Codable {
         let count: Int?
         let url: String?
     }
@@ -130,7 +147,7 @@ struct TreatyDetail: Codable {
 
 struct MemberDetail: Codable {
     let bioguideId: String
-    let name: String? // usually directOrderName or similar in detail
+    let name: String?
     let birthYear: String?
     let directOrderName: String?
     let partyHistory: [PartyHistoryItem]?
@@ -176,6 +193,8 @@ enum CongressRoute: Hashable {
 
 class APIManager {
     static let shared = APIManager()
+    
+    // IMPORTANT: Replace this with your actual key
     private let apiKey = "c3yejfiNvHRNh8eu5uT4JzUQmqEbBLh0wPXV2NWT"
     private let baseURL = "https://api.congress.gov/v3"
     
@@ -191,14 +210,26 @@ class APIManager {
         
         let (data, response) = try await URLSession.shared.data(from: url)
         
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        
+        // Error Handling
+        guard httpResponse.statusCode == 200 else {
+            print("API Error: \(httpResponse.statusCode) for \(url)")
             throw URLError(.badServerResponse)
         }
         
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            print("Decoding error for \(endpoint): \(error)")
+            print("--------------------------------")
+            print("DECODING ERROR for endpoint: \(endpoint)")
+            print("Error: \(error)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("JSON Prefix: \(jsonString.prefix(500))")
+            }
+            print("--------------------------------")
             throw error
         }
     }
@@ -217,7 +248,7 @@ class CongressListViewModel: ObservableObject {
     @Published var errorMessage: String?
     
     // Filters
-    @Published var selectedCongress: Int = 118
+    @Published var selectedCongress: Int = 119 // Defaulting to 119 (Current) or 118
     @Published var selectedBillType: String = ""
     @Published var selectedState: String = ""
     
@@ -252,7 +283,8 @@ class CongressListViewModel: ObservableObject {
             let endpoint: String
             switch selectedTab {
             case .bills:
-                endpoint = "/bill/\(selectedCongress)" + (selectedBillType.isEmpty ? "" : "/\(selectedBillType)")
+                let typePath = selectedBillType.isEmpty ? "" : "/\(selectedBillType.lowercased())"
+                endpoint = "/bill/\(selectedCongress)" + typePath
             case .treaties:
                 endpoint = "/treaty/\(selectedCongress)"
             case .members:
@@ -279,8 +311,6 @@ class CongressListViewModel: ObservableObject {
                 } else { canLoadMore = false }
                 
             case .members:
-                // For members list, usually want current members unless filtered by congress
-                // If using /member, we might want currentMember=true if no other filter
                 var memParams = params
                 if selectedState.isEmpty { memParams["currentMember"] = "true" }
                 
@@ -319,11 +349,22 @@ struct CongressView: View {
                 .padding()
                 .onChange(of: vm.selectedTab) { _, _ in vm.resetAndLoad() }
                 
+                if let err = vm.errorMessage {
+                    Text("Error: \(err)")
+                        .foregroundColor(.red)
+                        .padding()
+                        .onTapGesture { vm.resetAndLoad() }
+                }
+                
                 List {
                     switch vm.selectedTab {
                     case .bills:
                         ForEach(vm.bills) { bill in
-                            NavigationLink(value: CongressRoute.billDetail(congress: bill.congress ?? 118, type: bill.type ?? "hr", number: bill.number ?? "1")) {
+                            NavigationLink(value: CongressRoute.billDetail(
+                                congress: bill.congress ?? 118,
+                                type: sanitizeBillType(bill.type),
+                                number: bill.number ?? "1"
+                            )) {
                                 BillListRow(bill: bill)
                             }
                         }
@@ -388,7 +429,8 @@ struct BillListRow: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(bill.title ?? "Untitled")
+            // FIX: Use .displayTitle instead of displayTitle property
+            Text(bill.displayTitle)
                 .font(.subheadline)
                 .fontWeight(.medium)
                 .lineLimit(2)
@@ -487,11 +529,26 @@ struct BillDetailView: View {
     
     @State private var detail: BillDetail?
     @State private var loading = true
+    @State private var loadError: String?
     
     var body: some View {
         ScrollView {
             if loading {
                 ProgressView().padding(.top, 50)
+            } else if let error = loadError {
+                VStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.largeTitle)
+                        .foregroundColor(.orange)
+                    Text("Could not load bill details.")
+                        .font(.headline)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                }
+                .padding(.top, 50)
             } else if let detail = detail {
                 VStack(alignment: .leading, spacing: 16) {
                     
@@ -556,6 +613,7 @@ struct BillDetailView: View {
                         }
                     }
                     
+                    // View External Link
                     Link(destination: generateCongressURL()) {
                         HStack {
                             Text("View on Congress.gov")
@@ -569,17 +627,20 @@ struct BillDetailView: View {
                     }
                 }
                 .padding()
-            } else {
-                Text("Failed to load details").foregroundColor(.red).padding()
             }
         }
         .navigationBarTitleDisplayMode(.inline)
         .task {
             do {
-                let res: CongressResponse<BillDetail> = try await APIManager.shared.fetch(endpoint: "/bill/\(congress)/\(type.lowercased())/\(number)")
+                // IMPORTANT: sanitize type again just in case
+                let cleanType = sanitizeBillType(type)
+                let endpoint = "/bill/\(congress)/\(cleanType)/\(number)"
+                print("Fetching Bill Detail: \(endpoint)") // Debugging
+                let res: CongressResponse<BillDetail> = try await APIManager.shared.fetch(endpoint: endpoint)
                 self.detail = res.bill
             } catch {
                 print(error)
+                self.loadError = error.localizedDescription
             }
             loading = false
         }
@@ -588,14 +649,14 @@ struct BillDetailView: View {
     func generateCongressURL() -> URL {
         var typeSlug = "bill"
         var chamber = "house"
-        switch type.lowercased() {
-        case "s", "sres", "sjres", "sconres": chamber = "senate"
-        default: chamber = "house"
-        }
+        let cleanType = type.lowercased().replacingOccurrences(of: ".", with: "")
         
-        // Simplified mapping for URL generation
-        if type.lowercased().contains("res") { typeSlug = "resolution" }
+        if cleanType.hasPrefix("s") { chamber = "senate" }
         
+        if cleanType.contains("res") { typeSlug = "resolution" }
+        if cleanType.contains("joint") { typeSlug = "joint-resolution" }
+        
+        // Default construction, might need tweaking for specific weird types
         return URL(string: "https://www.congress.gov/bill/\(congress)th-congress/\(chamber)-\(typeSlug)/\(number)")!
     }
 }
@@ -724,9 +785,17 @@ struct MemberDetailView: View {
                         Text("No recent sponsored legislation found.").font(.caption).foregroundColor(.gray)
                     } else {
                         ForEach(sponsored) { bill in
-                            NavigationLink(value: CongressRoute.billDetail(congress: bill.congress ?? 118, type: bill.type ?? "hr", number: bill.number ?? "1")) {
+                            // IMPORTANT: sanitize the sponsored bill type
+                            NavigationLink(value: CongressRoute.billDetail(
+                                congress: bill.congress ?? 118,
+                                type: sanitizeBillType(bill.type),
+                                number: bill.number ?? "1"
+                            )) {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(bill.title ?? "Untitled")
+                                    
+                                    // FIX 3: Use the computed .displayTitle
+                                    // This prevents the "Untitled" issue seen in your screenshots
+                                    Text(bill.displayTitle)
                                         .font(.subheadline)
                                         .multilineTextAlignment(.leading)
                                         .lineLimit(2)
@@ -787,7 +856,7 @@ struct FilterView: View {
                 if vm.selectedTab == .bills || vm.selectedTab == .treaties {
                     Section(header: Text("Congress")) {
                         Picker("Congress Session", selection: $vm.selectedCongress) {
-                            ForEach((100...118).reversed(), id: \.self) { i in
+                            ForEach((115...119).reversed(), id: \.self) { i in
                                 Text("\(i)th Congress").tag(i)
                             }
                         }
@@ -829,6 +898,12 @@ struct FilterView: View {
 }
 
 // MARK: - Helpers
+
+// CRITICAL FIX: Sanitize incoming types from API (e.g. "H.R." -> "hr")
+func sanitizeBillType(_ type: String?) -> String {
+    guard let t = type else { return "hr" }
+    return t.lowercased().replacingOccurrences(of: ".", with: "")
+}
 
 struct Badge: View {
     let text: String

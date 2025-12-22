@@ -4,6 +4,9 @@ import SwiftUI
 struct HapticButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
+            .opacity(configuration.isPressed ? 0.6 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, pressed in
                 if pressed {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
