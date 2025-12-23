@@ -865,7 +865,16 @@ struct FilterView: View {
     var body: some View {
         NavigationView {
             Form {
-                // CHANGED: Hide Congress filter for treaties
+                // MESSAGE FOR TREATIES (TAB 1)
+                if tab == 1 {
+                    Section {
+                        Text("There are no filters for this page.")
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                }
+                
+                // FILTERS FOR BILLS (0) & MEMBERS (2)
                 if tab == 0 || tab == 2 {
                     Section("Congress") {
                         Picker("Congress", selection: $vm.congress) {
@@ -875,6 +884,8 @@ struct FilterView: View {
                         }
                     }
                 }
+                
+                // FILTERS FOR BILLS ONLY
                 if tab == 0 {
                     Section("Bill Type") {
                         Picker("Type", selection: $vm.billType) {
@@ -884,6 +895,8 @@ struct FilterView: View {
                         }
                     }
                 }
+                
+                // FILTERS FOR MEMBERS ONLY
                 if tab == 2 {
                     Section("State") {
                         Picker("State", selection: $vm.state) {
