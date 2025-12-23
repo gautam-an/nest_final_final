@@ -40,7 +40,6 @@ struct DateUtils {
     }
 }
 
-// Helper to remove commas from years (2,015 -> 2015)
 struct YearFormatter {
     static func format(_ year: Int?) -> String {
         guard let year = year else { return "" }
@@ -68,7 +67,6 @@ struct URLBuilder {
 
 // MARK: - MODELS
 
-// Flexible Wrapper to handle API inconsistencies
 struct FlexibleWrapper<T: Codable>: Codable {
     let item: [T]
     
@@ -152,12 +150,18 @@ struct BillDetail: Codable {
 struct TreatyDetailResponse: Codable { let treaty: TreatyDetail? }
 struct TreatyDetail: Codable {
     let congressReceived: Int?
+    let congressConsidered: Int?
     let number: Int?
     let suffix: String?
     let topic: String?
     let transmittedDate: String?
     let inForceDate: String?
+    let oldNumber: String?
+    let oldNumberDisplayName: String?
+    
     let countriesParties: FlexibleWrapper<CountryParty>?
+    let indexTerms: FlexibleWrapper<IndexTerm>?
+    let relatedDocs: FlexibleWrapper<RelatedDoc>?
 }
 
 struct MemberDetailResponse: Codable { let member: MemberDetail? }
@@ -165,6 +169,8 @@ struct MemberDetail: Codable {
     let bioguideId: String?
     let directOrderName: String?
     let birthYear: String?
+    let state: String?
+    let district: Int?
     let partyHistory: FlexibleWrapper<PartyHistory>?
     let terms: FlexibleWrapper<TermRaw>?
     let leadership: FlexibleWrapper<Leadership>?
@@ -209,6 +215,15 @@ struct CountryParty: Codable, Hashable {
     let name: String?
 }
 
+struct IndexTerm: Codable, Hashable {
+    let name: String?
+}
+
+struct RelatedDoc: Codable, Hashable {
+    let name: String?
+    let url: String?
+}
+
 struct PartyHistory: Codable, Hashable {
     let partyName: String?
     let startYear: Int?
@@ -229,6 +244,8 @@ struct Leadership: Codable, Hashable {
 struct ActionsResponse: Codable { let actions: [ActionRaw]? }
 struct SummariesResponse: Codable { let summaries: [SummaryRaw]? }
 struct CommitteesResponse: Codable { let committees: [CommitteeRaw]? }
+// Special container for treaties which sometimes use "treatyCommittees" or "committees"
+struct TreatyCommitteesResponse: Codable { let treatyCommittees: [CommitteeRaw]? }
 struct CosponsorsResponse: Codable { let cosponsors: [SponsorRaw]? }
 struct TextResponse: Codable { let textVersions: [TextRaw]? }
 struct SponsoredLegislationResponse: Codable { let sponsoredLegislation: [BillListRaw]? }
@@ -388,8 +405,15 @@ class DetailViewModel: ObservableObject {
             let res: TreatyDetailResponse = try await NetworkManager.shared.fetch(endpoint: base)
             self.treaty = res.treaty
             
+            // Try fetching committees specifically for treaties
+            // The API sometimes uses a different structure for treaties
             async let a: ActionsResponse? = try? NetworkManager.shared.fetch(endpoint: base + "/actions")
-            self.actions = (await a)?.actions ?? []
+            async let c: TreatyCommitteesResponse? = try? NetworkManager.shared.fetch(endpoint: base + "/committees")
+            
+            let (act, com) = await (a, c)
+            
+            self.actions = act?.actions ?? []
+            self.committees = com?.treatyCommittees ?? []
             
         } catch {
             self.errorMessage = "Unable to load treaty details."
@@ -434,7 +458,8 @@ struct CongressView: View {
                     Text("Members").tag(2)
                 }
                 .pickerStyle(.segmented)
-                .padding()
+                .padding(.horizontal)
+                .padding(.bottom, 8)
                 
                 if tab == 0 {
                     List(vm.bills) { bill in
@@ -452,6 +477,7 @@ struct CongressView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
                     .refreshable { await vm.loadBills() }
                 } else if tab == 1 {
                     List(vm.treaties) { treaty in
@@ -468,6 +494,7 @@ struct CongressView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
                     .refreshable { await vm.loadTreaties() }
                 } else {
                     List(vm.members) { member in
@@ -484,10 +511,11 @@ struct CongressView: View {
                             }
                         }
                     }
+                    .listStyle(.plain)
                     .refreshable { await vm.loadMembers() }
                 }
             }
-            .navigationTitle("ElectConnect")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 Button(action: { showFilter.toggle() }) {
                     Image(systemName: "slider.horizontal.3")
@@ -581,7 +609,6 @@ struct BillDetailView: View {
                         }
                     }
                     
-                    // Spacer for bottom button; listRowBackground hidden to remove white box
                     Color.clear
                         .frame(height: 60)
                         .listRowBackground(Color.clear)
@@ -620,12 +647,40 @@ struct TreatyDetailView: View {
                         Text("No: \(t.number ?? 0)\(t.suffix ?? "")")
                         Text("Transmitted: \(DateUtils.format(t.transmittedDate))")
                         if let f = t.inForceDate { Text("In Force: \(DateUtils.format(f))") }
+                        if let cc = t.congressConsidered { Text("Considered: \(cc)th Congress") }
+                        if let old = t.oldNumber { Text("Old Number: \(old)") }
                     } header: { Text("Details") }
                     
-                    // Only show parties if not empty
                     if let parties = t.countriesParties?.item, !parties.isEmpty {
                         Section("Parties") {
                             Text(parties.compactMap{$0.name}.joined(separator: ", "))
+                        }
+                    }
+                    
+                    if let terms = t.indexTerms?.item, !terms.isEmpty {
+                         Section("Index Terms") {
+                             Text(terms.compactMap{$0.name}.joined(separator: ", "))
+                                 .font(.caption)
+                         }
+                    }
+                    
+                    if let docs = t.relatedDocs?.item, !docs.isEmpty {
+                        Section("Executive Reports") {
+                            ForEach(docs, id: \.self) { doc in
+                                if let u = doc.url, let url = URL(string: u) {
+                                    Link(doc.name ?? "Document", destination: url)
+                                } else {
+                                    Text(doc.name ?? "")
+                                }
+                            }
+                        }
+                    }
+                    
+                    if !vm.committees.isEmpty {
+                        Section("Committees") {
+                            ForEach(vm.committees, id: \.self) { c in
+                                Text(c.name ?? "")
+                            }
                         }
                     }
                     
@@ -682,6 +737,10 @@ struct MemberDetailView: View {
                             VStack(alignment: .leading) {
                                 Text(m.directOrderName ?? "").font(.title2).bold()
                                 Text("ID: \(m.bioguideId ?? "")").font(.caption)
+                                if let state = m.state {
+                                    Text("\(state)\(m.district != nil ? " - District \(m.district!)" : "")")
+                                        .font(.subheadline).foregroundColor(.secondary)
+                                }
                             }
                         }
                         if let ph = m.partyHistory?.item.last {
@@ -700,7 +759,6 @@ struct MemberDetailView: View {
                     if let terms = m.terms?.item {
                         Section("Terms") {
                             ForEach(terms.reversed(), id: \.self) { t in
-                                // Removed commas from years
                                 Text("\(t.chamber ?? ""): \(YearFormatter.format(t.startYear))-\(t.endYear != nil ? YearFormatter.format(t.endYear) : "Present")")
                             }
                         }
@@ -708,10 +766,13 @@ struct MemberDetailView: View {
                     
                     if !vm.sponsored.isEmpty {
                         Section("Sponsored Legislation") {
-                            ForEach(vm.sponsored.prefix(5)) { b in
-                                VStack(alignment: .leading) {
-                                    Text("\(b.type?.uppercased() ?? "") \(b.number ?? "")").bold().font(.caption)
-                                    Text(b.title ?? "").font(.caption2).lineLimit(1)
+                            ForEach(vm.sponsored.prefix(5)) { bill in
+                                NavigationLink(destination: BillDetailView(raw: bill)) {
+                                    VStack(alignment: .leading) {
+                                        Text("\(bill.type?.uppercased() ?? "") \(bill.number ?? "")")
+                                            .bold().font(.caption).foregroundColor(.blue)
+                                        Text(bill.title ?? "Untitled").font(.caption).lineLimit(2)
+                                    }
                                 }
                             }
                         }
@@ -719,10 +780,13 @@ struct MemberDetailView: View {
                     
                     if !vm.cosponsored.isEmpty {
                         Section("Cosponsored Legislation") {
-                            ForEach(vm.cosponsored.prefix(5)) { b in
-                                VStack(alignment: .leading) {
-                                    Text("\(b.type?.uppercased() ?? "") \(b.number ?? "")").bold().font(.caption)
-                                    Text(b.title ?? "").font(.caption2).lineLimit(1)
+                            ForEach(vm.cosponsored.prefix(5)) { bill in
+                                NavigationLink(destination: BillDetailView(raw: bill)) {
+                                    VStack(alignment: .leading) {
+                                        Text("\(bill.type?.uppercased() ?? "") \(bill.number ?? "")")
+                                            .bold().font(.caption).foregroundColor(.blue)
+                                        Text(bill.title ?? "Untitled").font(.caption).lineLimit(2)
+                                    }
                                 }
                             }
                         }
