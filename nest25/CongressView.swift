@@ -305,7 +305,7 @@ class MainViewModel: ObservableObject {
     @Published var treaties: [TreatyListRaw] = []
     @Published var members: [MemberListRaw] = []
     
-    // CHANGED DEFAULT TO 119
+    // Default to 119th Congress
     @Published var congress = 119
     @Published var billType = ""
     @Published var state = ""
@@ -330,7 +330,9 @@ class MainViewModel: ObservableObject {
     func loadTreaties() async {
         isLoading = true
         defer { isLoading = false }
-        if let res: CongressResponse<TreatyListRaw> = try? await NetworkManager.shared.fetch(endpoint: "/treaty/\(congress)", limit: 250) {
+        
+        // CHANGED: Use /treaty (ALL) instead of filtered by congress
+        if let res: CongressResponse<TreatyListRaw> = try? await NetworkManager.shared.fetch(endpoint: "/treaty", limit: 250) {
             let allTreaties = res.treaties ?? []
             var seen = Set<String>()
             let uniqueTreaties = allTreaties.filter { seen.insert($0.id).inserted }
@@ -345,7 +347,7 @@ class MainViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         
-        // CHANGED: Use /member/congress/{congress} to filter out past members like Dick Cheney
+        // Filters by specific Congress to avoid dead/past members (unless user selects older congress)
         var path = "/member/congress/\(congress)"
         if !state.isEmpty {
             path += "/\(state)"
@@ -512,7 +514,6 @@ struct CongressView: View {
                     List(vm.members) { member in
                         NavigationLink(destination: MemberDetailView(raw: member)) {
                             HStack {
-                                // MEMBER PROFILE PIC WITH PLACEHOLDER
                                 if let url = member.depiction?.imageUrl {
                                     AsyncImage(url: URL(string: url)) { i in
                                         i.resizable().scaledToFill()
@@ -864,7 +865,8 @@ struct FilterView: View {
     var body: some View {
         NavigationView {
             Form {
-                if tab == 0 || tab == 1 || tab == 2 {
+                // CHANGED: Hide Congress filter for treaties
+                if tab == 0 || tab == 2 {
                     Section("Congress") {
                         Picker("Congress", selection: $vm.congress) {
                             ForEach((100...119).reversed(), id: \.self) { c in
