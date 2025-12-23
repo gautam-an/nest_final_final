@@ -6,6 +6,14 @@ let BASE_URL = "https://api.congress.gov/v3"
 
 // MARK: - UTILITIES
 
+// Helper to remove duplicates from Arrays (used for Actions)
+extension Array where Element: Hashable {
+    func uniqued() -> [Element] {
+        var seen = Set<Element>()
+        return filter { seen.insert($0).inserted }
+    }
+}
+
 struct DateUtils {
     static let isoFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
@@ -244,7 +252,6 @@ struct Leadership: Codable, Hashable {
 struct ActionsResponse: Codable { let actions: [ActionRaw]? }
 struct SummariesResponse: Codable { let summaries: [SummaryRaw]? }
 struct CommitteesResponse: Codable { let committees: [CommitteeRaw]? }
-// Special container for treaties which sometimes use "treatyCommittees" or "committees"
 struct TreatyCommitteesResponse: Codable { let treatyCommittees: [CommitteeRaw]? }
 struct CosponsorsResponse: Codable { let cosponsors: [SponsorRaw]? }
 struct TextResponse: Codable { let textVersions: [TextRaw]? }
@@ -381,7 +388,9 @@ class DetailViewModel: ObservableObject {
             
             let (act, sum, com, cosp, tex) = await (a, s, c, co, txt)
             
-            self.actions = act?.actions ?? []
+            // DEDUPLICATE ACTIONS HERE
+            self.actions = (act?.actions ?? []).uniqued()
+            
             self.summaries = sum?.summaries ?? []
             self.committees = com?.committees ?? []
             self.cosponsors = cosp?.cosponsors ?? []
@@ -405,14 +414,14 @@ class DetailViewModel: ObservableObject {
             let res: TreatyDetailResponse = try await NetworkManager.shared.fetch(endpoint: base)
             self.treaty = res.treaty
             
-            // Try fetching committees specifically for treaties
-            // The API sometimes uses a different structure for treaties
             async let a: ActionsResponse? = try? NetworkManager.shared.fetch(endpoint: base + "/actions")
             async let c: TreatyCommitteesResponse? = try? NetworkManager.shared.fetch(endpoint: base + "/committees")
             
             let (act, com) = await (a, c)
             
-            self.actions = act?.actions ?? []
+            // DEDUPLICATE ACTIONS HERE
+            self.actions = (act?.actions ?? []).uniqued()
+            
             self.committees = com?.treatyCommittees ?? []
             
         } catch {
@@ -515,7 +524,7 @@ struct CongressView: View {
                     .refreshable { await vm.loadMembers() }
                 }
             }
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Congress") // BOLD TITLE RESTORED
             .toolbar {
                 Button(action: { showFilter.toggle() }) {
                     Image(systemName: "slider.horizontal.3")

@@ -423,7 +423,7 @@ struct AboutElectConnectView: View {
                 Group {
                     Text("Version Info")
                         .font(.headline)
-                    Text("Elect Connect v1.0.\nSwiftUI • iOS")
+                    Text("Elect Connect v1.1.\nSwiftUI • iOS")
                 }
 
                 Group {
