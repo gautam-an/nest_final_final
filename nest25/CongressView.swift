@@ -6,7 +6,7 @@ let BASE_URL = "https://api.congress.gov/v3"
 
 // MARK: - UTILITIES
 
-// Helper to remove duplicates from Arrays (used for Actions)
+// Helper to remove duplicates
 extension Array where Element: Hashable {
     func uniqued() -> [Element] {
         var seen = Set<Element>()
@@ -305,7 +305,8 @@ class MainViewModel: ObservableObject {
     @Published var treaties: [TreatyListRaw] = []
     @Published var members: [MemberListRaw] = []
     
-    @Published var congress = 118
+    // CHANGED DEFAULT TO 119
+    @Published var congress = 119
     @Published var billType = ""
     @Published var state = ""
     @Published var isLoading = false
@@ -343,7 +344,13 @@ class MainViewModel: ObservableObject {
     func loadMembers() async {
         isLoading = true
         defer { isLoading = false }
-        let path = state.isEmpty ? "/member" : "/member/\(state)"
+        
+        // CHANGED: Use /member/congress/{congress} to filter out past members like Dick Cheney
+        var path = "/member/congress/\(congress)"
+        if !state.isEmpty {
+            path += "/\(state)"
+        }
+        
         if let res: CongressResponse<MemberListRaw> = try? await NetworkManager.shared.fetch(endpoint: path) {
             let allMembers = res.members ?? []
             var seen = Set<String>()
@@ -388,9 +395,7 @@ class DetailViewModel: ObservableObject {
             
             let (act, sum, com, cosp, tex) = await (a, s, c, co, txt)
             
-            // DEDUPLICATE ACTIONS HERE
             self.actions = (act?.actions ?? []).uniqued()
-            
             self.summaries = sum?.summaries ?? []
             self.committees = com?.committees ?? []
             self.cosponsors = cosp?.cosponsors ?? []
@@ -419,9 +424,7 @@ class DetailViewModel: ObservableObject {
             
             let (act, com) = await (a, c)
             
-            // DEDUPLICATE ACTIONS HERE
             self.actions = (act?.actions ?? []).uniqued()
-            
             self.committees = com?.treatyCommittees ?? []
             
         } catch {
@@ -509,10 +512,25 @@ struct CongressView: View {
                     List(vm.members) { member in
                         NavigationLink(destination: MemberDetailView(raw: member)) {
                             HStack {
+                                // MEMBER PROFILE PIC WITH PLACEHOLDER
                                 if let url = member.depiction?.imageUrl {
-                                    AsyncImage(url: URL(string: url)) { i in i.resizable().scaledToFill() } placeholder: { Color.gray }
-                                        .frame(width: 44, height: 44).clipShape(Circle())
+                                    AsyncImage(url: URL(string: url)) { i in
+                                        i.resizable().scaledToFill()
+                                    } placeholder: {
+                                        Image(systemName: "person.crop.circle.fill")
+                                            .resizable()
+                                            .scaledToFit()
+                                            .foregroundColor(.gray.opacity(0.5))
+                                    }
+                                    .frame(width: 44, height: 44).clipShape(Circle())
+                                } else {
+                                    Image(systemName: "person.crop.circle.fill")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 44, height: 44)
+                                        .foregroundColor(.gray.opacity(0.5))
                                 }
+                                
                                 VStack(alignment: .leading) {
                                     Text(member.name ?? "").font(.headline)
                                     Text("\(member.partyName ?? "") • \(member.state ?? "")").font(.caption).foregroundColor(.secondary)
@@ -524,7 +542,7 @@ struct CongressView: View {
                     .refreshable { await vm.loadMembers() }
                 }
             }
-            .navigationTitle("Congress") // BOLD TITLE RESTORED
+            .navigationTitle("Congress")
             .toolbar {
                 Button(action: { showFilter.toggle() }) {
                     Image(systemName: "slider.horizontal.3")
@@ -740,9 +758,23 @@ struct MemberDetailView: View {
                     Section {
                         HStack {
                             if let url = m.depiction?.imageUrl {
-                                AsyncImage(url: URL(string: url)) { i in i.resizable().scaledToFill() } placeholder: { Color.gray }
-                                    .frame(width: 60, height: 60).clipShape(Circle())
+                                AsyncImage(url: URL(string: url)) { i in
+                                    i.resizable().scaledToFill()
+                                } placeholder: {
+                                    Image(systemName: "person.crop.circle.fill")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .foregroundColor(.gray.opacity(0.5))
+                                }
+                                .frame(width: 60, height: 60).clipShape(Circle())
+                            } else {
+                                Image(systemName: "person.crop.circle.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 60, height: 60)
+                                    .foregroundColor(.gray.opacity(0.5))
                             }
+                            
                             VStack(alignment: .leading) {
                                 Text(m.directOrderName ?? "").font(.title2).bold()
                                 Text("ID: \(m.bioguideId ?? "")").font(.caption)
@@ -775,7 +807,8 @@ struct MemberDetailView: View {
                     
                     if !vm.sponsored.isEmpty {
                         Section("Sponsored Legislation") {
-                            ForEach(vm.sponsored.prefix(5)) { bill in
+                            // Filter out untitled or empty bills
+                            ForEach(vm.sponsored.prefix(5).filter { $0.title?.isEmpty == false && $0.title != "Untitled" }) { bill in
                                 NavigationLink(destination: BillDetailView(raw: bill)) {
                                     VStack(alignment: .leading) {
                                         Text("\(bill.type?.uppercased() ?? "") \(bill.number ?? "")")
@@ -789,7 +822,8 @@ struct MemberDetailView: View {
                     
                     if !vm.cosponsored.isEmpty {
                         Section("Cosponsored Legislation") {
-                            ForEach(vm.cosponsored.prefix(5)) { bill in
+                            // Filter out untitled or empty bills
+                            ForEach(vm.cosponsored.prefix(5).filter { $0.title?.isEmpty == false && $0.title != "Untitled" }) { bill in
                                 NavigationLink(destination: BillDetailView(raw: bill)) {
                                     VStack(alignment: .leading) {
                                         Text("\(bill.type?.uppercased() ?? "") \(bill.number ?? "")")
@@ -830,10 +864,10 @@ struct FilterView: View {
     var body: some View {
         NavigationView {
             Form {
-                if tab == 0 || tab == 1 {
+                if tab == 0 || tab == 1 || tab == 2 {
                     Section("Congress") {
                         Picker("Congress", selection: $vm.congress) {
-                            ForEach((100...118).reversed(), id: \.self) { c in
+                            ForEach((100...119).reversed(), id: \.self) { c in
                                 Text("\(c)th").tag(c)
                             }
                         }
